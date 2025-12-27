@@ -2,107 +2,94 @@ import React, { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Shield, MessageSquare, Mail, Smartphone, Check, Lock } from 'lucide-react';
+import { MessageSquare, Mail } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 
 export default function Permissions() {
   const [smsEnabled, setSmsEnabled] = useState(true);
   const [emailEnabled, setEmailEnabled] = useState(false);
 
-  const handleToggle = (type: 'sms' | 'email', value: boolean) => {
-    if (type === 'sms') setSmsEnabled(value);
-    if (type === 'email') setEmailEnabled(value);
-    
+  const handleSMSToggle = (value: boolean) => {
+    setSmsEnabled(value);
     toast({
-      title: value ? "Permission Granted" : "Permission Revoked",
-      description: `${type.toUpperCase()} access has been ${value ? 'enabled' : 'disabled'}.`,
+      title: value ? "SMS Access Enabled" : "SMS Access Disabled",
+      description: value 
+        ? "The app can now read your transaction SMS messages." 
+        : "The app will not read your SMS messages.",
+      duration: 2000,
+    });
+  };
+
+  const handleEmailToggle = (value: boolean) => {
+    setEmailEnabled(value);
+    toast({
+      title: value ? "Gmail Access Enabled" : "Gmail Access Disabled",
+      description: value 
+        ? "The app can now read your transaction emails from Gmail." 
+        : "The app will not read your Gmail messages.",
       duration: 2000,
     });
   };
 
   return (
     <Layout>
-      <div className="px-6 pt-8 pb-6">
-        <h1 className="text-2xl font-bold mb-2">Data & Privacy</h1>
-        <p className="text-muted-foreground text-sm mb-8">
-          Control how ClearText accesses and processes your transaction messages.
+      <div className="px-5 pt-6 pb-6">
+        <h1 className="text-2xl font-bold mb-1">Permissions</h1>
+        <p className="text-muted-foreground text-sm mb-6">
+          Choose which messages the app can read to explain your transactions.
         </p>
 
-        {/* Privacy Promise Card */}
-        <Card className="bg-primary text-primary-foreground border-none mb-8 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10" />
-          <CardHeader className="relative z-10 pb-2">
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center mb-3">
-              <Lock className="w-5 h-5 text-white" />
+        {/* SMS Permission */}
+        <Card className="mb-4 border-none shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-start gap-3 flex-1">
+                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground flex-shrink-0 mt-0.5">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-base text-foreground">SMS Messages</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Bank alerts, UPI, card transactions</p>
+                </div>
+              </div>
+              <Switch 
+                checked={smsEnabled} 
+                onCheckedChange={handleSMSToggle}
+                className="ml-2"
+              />
             </div>
-            <CardTitle className="text-lg">Zero-Knowledge Processing</CardTitle>
-          </CardHeader>
-          <CardContent className="relative z-10">
-            <p className="text-primary-foreground/90 text-sm leading-relaxed">
-              We process all messages locally on your device. Your financial data never leaves your phone and is never stored on our servers.
-            </p>
           </CardContent>
         </Card>
 
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Input Sources</h2>
-
-        {/* SMS Permission */}
-        <div className="bg-card rounded-xl border border-border p-4 mb-4 shadow-sm">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground">
-                <MessageSquare className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-base">SMS Messages</h3>
-                <p className="text-xs text-muted-foreground">Bank alerts & OTPs</p>
-              </div>
-            </div>
-            <Switch 
-              checked={smsEnabled} 
-              onCheckedChange={(v) => handleToggle('sms', v)} 
-            />
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed pl-[3.25rem]">
-            Allows the app to read incoming SMS to detect financial transactions automatically.
-          </p>
-        </div>
-
         {/* Email Permission */}
-        <div className="bg-card rounded-xl border border-border p-4 mb-6 shadow-sm">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground">
-                <Mail className="w-5 h-5" />
+        <Card className="mb-6 border-none shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-start gap-3 flex-1">
+                <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground flex-shrink-0 mt-0.5">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-base text-foreground">Gmail</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Transaction emails and receipts</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-base">Email Receipts</h3>
-                <p className="text-xs text-muted-foreground">Invoices & Statements</p>
-              </div>
+              <Switch 
+                checked={emailEnabled} 
+                onCheckedChange={handleEmailToggle}
+                className="ml-2"
+              />
             </div>
-            <Switch 
-              checked={emailEnabled} 
-              onCheckedChange={(v) => handleToggle('email', v)} 
-            />
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed pl-[3.25rem]">
-            Connect your Gmail account to parse transaction emails. Read-only access required.
-          </p>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="flex flex-col gap-3">
-            <Button variant="outline" className="w-full justify-start h-12 text-muted-foreground font-normal">
-                <Shield className="w-4 h-4 mr-2" />
-                Read Privacy Policy
-            </Button>
-            <Button variant="outline" className="w-full justify-start h-12 text-muted-foreground font-normal">
-                <Check className="w-4 h-4 mr-2" />
-                Data Retention Settings
-            </Button>
+        <div className="space-y-2 text-xs text-muted-foreground leading-relaxed">
+          <p>✓ SMS reading requires Android permission</p>
+          <p>✓ Gmail access is read-only (we never modify emails)</p>
+          <p>✓ Messages are processed on your device only</p>
+          <p>✓ We don't store full message content</p>
         </div>
-
       </div>
     </Layout>
   );

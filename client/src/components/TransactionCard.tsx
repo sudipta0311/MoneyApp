@@ -15,7 +15,6 @@ import { Transaction } from '@/lib/mockData';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 
 interface TransactionCardProps {
   transaction: Transaction;
@@ -41,40 +40,52 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
     return 'text-primary';
   };
 
+  const formatTime = (date: Date) => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return date.toLocaleDateString();
+  };
+
   return (
-    <Card className="mb-4 overflow-hidden border-none shadow-sm bg-card hover:shadow-md transition-shadow duration-200">
+    <Card className="mb-3 overflow-hidden border-none shadow-sm bg-card hover:shadow-md transition-shadow duration-200">
       <CardContent className="p-0">
         <div 
-          className="p-5 cursor-pointer"
+          className="p-4 cursor-pointer"
           onClick={() => setIsExpanded(!isExpanded)}
         >
           {/* Header */}
-          <div className="flex justify-between items-start mb-2">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground">
+          <div className="flex justify-between items-start mb-3">
+            <div className="flex items-center gap-3 flex-1">
+              <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground flex-shrink-0">
                 {getIcon()}
               </div>
-              <div>
-                <h3 className="font-semibold text-foreground text-lg leading-tight">
-                  {explanation.merchant || 'Unknown Merchant'}
+              <div className="min-w-0">
+                <h3 className="font-semibold text-foreground text-sm leading-tight">
+                  {explanation.merchant || 'Transaction'}
                 </h3>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                  {source} • {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                  {source} • {formatTime(timestamp)}
                 </p>
               </div>
             </div>
-            <div className={cn("text-lg font-bold font-mono tracking-tight", getAmountColor())}>
+            <div className={cn("text-base font-bold font-mono tracking-tight ml-2 flex-shrink-0", getAmountColor())}>
               {explanation.type === 'credit' ? '+' : ''}
               {explanation.currency}{explanation.amount.toLocaleString()}
             </div>
           </div>
 
-          {/* Simple Explanation Preview */}
-          <div className="mt-4 flex items-start gap-2">
-            <Sparkles className="w-4 h-4 text-accent-foreground flex-shrink-0 mt-0.5" />
-            <p className="text-sm font-medium text-foreground/80 leading-relaxed">
-              {explanation.summary}
-            </p>
+          {/* Simple Explanation */}
+          <div className="text-sm font-medium text-foreground/85 leading-relaxed">
+            {explanation.summary}
           </div>
         </div>
 
@@ -88,21 +99,25 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
               transition={{ duration: 0.2 }}
               className="bg-muted/30 border-t border-border"
             >
-              <div className="p-5 space-y-4">
+              <div className="p-4 space-y-4">
                 {/* Key Details Grid */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground block text-xs mb-1">Payment Method</span>
-                    <span className="font-medium">{explanation.method}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground block text-xs mb-1">Reference No.</span>
-                    <span className="font-mono text-xs">{explanation.referenceNo}</span>
-                  </div>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  {explanation.method && (
+                    <div>
+                      <span className="text-muted-foreground block font-medium mb-1">Payment Method</span>
+                      <span className="text-foreground">{explanation.method}</span>
+                    </div>
+                  )}
+                  {explanation.referenceNo && (
+                    <div>
+                      <span className="text-muted-foreground block font-medium mb-1">Reference</span>
+                      <span className="font-mono text-[11px]">{explanation.referenceNo}</span>
+                    </div>
+                  )}
                   {explanation.balance && (
                     <div className="col-span-2">
-                      <span className="text-muted-foreground block text-xs mb-1">Updated Balance</span>
-                      <span className="font-medium">{explanation.balance}</span>
+                      <span className="text-muted-foreground block font-medium mb-1">Updated Balance</span>
+                      <span className="text-foreground font-medium">{explanation.balance}</span>
                     </div>
                   )}
                 </div>
@@ -117,25 +132,10 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
                     {rawMessage}
                   </p>
                 </div>
-
-                {/* Privacy Badge */}
-                <div className="flex items-center gap-2 justify-center pt-2">
-                  <Badge variant="outline" className="bg-background/50 text-[10px] text-muted-foreground font-normal gap-1 hover:bg-background">
-                    <Check className="w-3 h-3" /> Processed locally on device
-                  </Badge>
-                </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Toggle Indicator */}
-        <div 
-          className="h-1 bg-muted/50 w-full flex items-center justify-center cursor-pointer hover:bg-muted transition-colors"
-          onClick={() => setIsExpanded(!isExpanded)}
-        >
-          {/* Decorative bar */}
-        </div>
       </CardContent>
     </Card>
   );

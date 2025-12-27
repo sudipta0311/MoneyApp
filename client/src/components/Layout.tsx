@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
-import { Home, Shield, Settings, Menu } from 'lucide-react';
+import { Home, Shield, Lock, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 
@@ -49,9 +49,9 @@ export function Layout({ children }: LayoutProps) {
         {/* Bottom Navigation */}
         <nav className="absolute bottom-0 left-0 right-0 bg-background border-t border-border px-6 py-2 pb-6 md:pb-2 z-40">
           <div className="flex justify-between items-center max-w-xs mx-auto">
-            <NavItem href="/" icon={Home} label="Home" />
-            <NavItem href="/permissions" icon={Shield} label="Privacy" />
-            <NavItem href="/settings" icon={Settings} label="Settings" />
+            <NavItem href="/" icon={Home} label="Transactions" />
+            <NavItem href="/permissions" icon={Shield} label="Permissions" />
+            <NavItem href="/disclaimer" icon={Lock} label="Privacy" />
           </div>
         </nav>
         

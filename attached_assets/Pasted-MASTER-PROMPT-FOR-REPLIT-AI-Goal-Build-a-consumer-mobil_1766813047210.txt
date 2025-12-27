@@ -1,0 +1,179 @@
+MASTER PROMPT FOR REPLIT AI
+
+Goal:
+Build a consumer mobile app for India that explains financial transactions from SMS and Gmail in simple language, without giving any financial advice.
+
+🔹 App Name (working)
+
+“Explain My Money”
+
+🔹 Core Purpose
+
+The app reads user-permitted SMS and Gmail messages related to banking, UPI, and card transactions and explains what happened in plain English.
+
+The app must:
+
+NOT give investment advice
+
+NOT suggest actions
+
+ONLY explain past transactions
+
+🔹 Supported Data Sources
+1️⃣ SMS (Android only)
+
+Read incoming SMS only after user permission
+
+Detect messages related to:
+
+UPI transactions
+
+Debit card / credit card transactions
+
+Bank debit / credit alerts
+
+Detection keywords (example):
+
+UPI, debited, credited, INR, Rs, txn, transaction, ref no, successful
+
+2️⃣ Gmail (Optional, user-opt-in)
+
+Use Gmail API with read-only permission OR manual email forwarding.
+
+Only process emails from:
+
+Banks
+
+Credit card issuers
+
+UPI apps
+
+Payment confirmations (Amazon, utilities, etc.)
+
+Search filters:
+
+subject/body contains: debited, credited, payment, INR, Rs, UPI
+
+🔹 What the App Should Extract
+
+From each SMS or email:
+
+Amount
+
+Debit or Credit
+
+Date / Time (if available)
+
+Merchant / sender (if available)
+
+Reference / transaction ID (if available)
+
+Source (SMS or Gmail)
+
+🔹 Explanation Logic (VERY IMPORTANT)
+
+The app should convert raw messages into friendly explanations like:
+
+Example output:
+
+“💸 You paid ₹850 using UPI.
+This payment was successful and confirmed by your bank.”
+
+Rules:
+
+Use simple, non-technical language
+
+No advice words like:
+
+“should”
+
+“invest”
+
+“avoid”
+
+“recommend”
+
+Only describe what already happened
+
+🔹 AI Usage Rules
+
+Use lightweight LLM prompting only to:
+
+Rewrite extracted data into human-friendly text
+
+No predictions
+
+No analysis of spending behavior
+
+No recommendations
+
+🔹 UI Requirements (Simple MVP)
+Screens:
+
+Permission screen (SMS / Gmail opt-in)
+
+Transaction list (latest first)
+
+Transaction explanation screen
+
+Privacy & disclaimer screen
+
+🔹 Mandatory Disclaimer (must be shown)
+
+Include this text exactly or very close:
+
+“This app only explains transaction messages you receive.
+It does not provide financial, investment, or legal advice.”
+
+🔹 Privacy & Compliance Requirements
+
+Clearly ask permission before:
+
+Reading SMS
+
+Accessing Gmail
+
+Allow users to:
+
+Disconnect Gmail
+
+Disable SMS reading
+
+Do NOT:
+
+Sell data
+
+Share data
+
+Store full email bodies unnecessarily
+
+🔹 Tech Stack Preference
+
+Frontend: React Native / Expo
+
+Backend: Node.js or Python
+
+Storage: Local storage + lightweight DB
+
+AI: Prompt-based explanation (no agents)
+
+🔹 Explicit Constraints (DO NOT VIOLATE)
+
+❌ No investment advice
+❌ No portfolio analysis
+❌ No fund / stock recommendations
+❌ No budgeting suggestions
+❌ No RBI / NPCI integration
+❌ No PAN, bank login, or scraping
+
+🔹 Success Criteria
+
+App passes Google Play SMS permission review
+
+App is SEBI-safe by design
+
+App works offline for SMS explanations
+
+Gmail integration is optional
+
+MVP can be built by a solo developer using Replit AI

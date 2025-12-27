@@ -6,16 +6,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Permissions from "@/pages/Permissions";
+import Disclaimer from "@/pages/Disclaimer";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/permissions" component={Permissions} />
-      {/* Placeholder for Settings */}
-      <Route path="/settings" component={() => (
-        <Permissions /> /* Re-using permissions for now as it's the main settings concern */
-      )} />
+      <Route path="/disclaimer" component={Disclaimer} />
       <Route component={NotFound} />
     </Switch>
   );
