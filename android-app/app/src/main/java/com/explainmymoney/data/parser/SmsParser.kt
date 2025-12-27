@@ -35,20 +35,28 @@ class SmsParser {
     private fun isTransactionSms(sender: String, body: String): Boolean {
         val bankSenders = listOf(
             "HDFCBK", "SBIINB", "ICICIB", "AXISBK", "KOTAKB", "PNBSMS", "BOIIND",
-            "IABORATNMOBILE", "YESBNK", "INDUSB", "CABORATIN", "FEDERALB"
+            "IABORATNMOBILE", "YESBNK", "INDUSB", "CABORATIN", "FEDERALB",
+            "PAYTMB", "IABORAT", "CANBNK", "UNIONB", "IABORATNIN", "RBLBNK",
+            "IABORATOR", "IDBIBNK", "CITIBNK", "SCBANK", "DLOBNK", "AUFBNK",
+            "PHONPE", "GPAY", "AMAZONPAY", "MOBIKWIK"
         )
 
         val transactionKeywords = listOf(
             "debited", "credited", "sent", "received", "paid", "payment",
-            "withdrawn", "deposited", "transfer", "upi", "neft", "imps"
+            "withdrawn", "deposited", "transfer", "upi", "neft", "imps",
+            "a/c", "acct", "account", "rs.", "inr", "bal", "txn", "ref"
         )
 
-        val senderMatch = bankSenders.any { sender.contains(it, ignoreCase = true) } ||
-                sender.matches(Regex(".*[A-Z]{2}-[A-Z]+.*"))
+        val senderMatch = bankSenders.any { sender.uppercase().contains(it) } ||
+                sender.matches(Regex(".*[A-Z]{2}-[A-Z]{3,}.*")) ||
+                sender.matches(Regex(".*[A-Z]{5,}.*"))
 
-        val bodyMatch = transactionKeywords.any { body.contains(it, ignoreCase = true) }
+        val lowerBody = body.lowercase()
+        val bodyMatch = transactionKeywords.any { lowerBody.contains(it) }
 
-        return senderMatch && bodyMatch
+        val hasAmount = body.matches(Regex(".*(?:Rs\\.?|INR|₹)\\s*[\\d,]+.*", RegexOption.IGNORE_CASE))
+
+        return senderMatch && bodyMatch && hasAmount
     }
 
     private fun extractAmount(body: String): Double? {

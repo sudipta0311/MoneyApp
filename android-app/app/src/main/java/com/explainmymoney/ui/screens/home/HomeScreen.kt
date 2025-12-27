@@ -90,19 +90,27 @@ fun HomeScreen(
                         Telephony.Sms.DATE
                     )
 
-                    val cursor: Cursor? = context.contentResolver.query(
-                        smsUri,
-                        projection,
-                        null,
-                        null,
-                        "${Telephony.Sms.DATE} DESC LIMIT 500"
-                    )
+                    val cursor: Cursor? = try {
+                        context.contentResolver.query(
+                            smsUri,
+                            projection,
+                            null,
+                            null,
+                            "${Telephony.Sms.DATE} DESC LIMIT 500"
+                        )
+                    } catch (e: SecurityException) {
+                        null
+                    }
 
                     val transactions = mutableListOf<Transaction>()
                     cursor?.use {
                         val addressIndex = it.getColumnIndex(Telephony.Sms.ADDRESS)
                         val bodyIndex = it.getColumnIndex(Telephony.Sms.BODY)
                         val dateIndex = it.getColumnIndex(Telephony.Sms.DATE)
+
+                        if (addressIndex < 0 || bodyIndex < 0 || dateIndex < 0) {
+                            return@use
+                        }
 
                         while (it.moveToNext()) {
                             val address = it.getString(addressIndex) ?: continue
@@ -121,10 +129,10 @@ fun HomeScreen(
                     repository.insertTransactions(parsedTransactions)
                     scanResult = "Found ${parsedTransactions.size} transaction SMS messages"
                 } else {
-                    scanResult = "No transaction messages found"
+                    scanResult = "No transaction messages found. Make sure you have bank SMS messages."
                 }
             } catch (e: Exception) {
-                scanResult = "Error scanning SMS: ${e.message}"
+                scanResult = "Error scanning SMS: ${e.message ?: "Unknown error"}"
             }
             isScanning = false
         }

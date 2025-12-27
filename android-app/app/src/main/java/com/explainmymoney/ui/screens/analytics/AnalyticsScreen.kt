@@ -38,12 +38,21 @@ fun AnalyticsScreen(
     var totalSpent by remember { mutableStateOf(0.0) }
     var totalIncome by remember { mutableStateOf(0.0) }
     var categoryBreakdown by remember { mutableStateOf<Map<TransactionCategory, Double>>(emptyMap()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         scope.launch {
-            totalSpent = repository.getTotalSpentThisMonth()
-            totalIncome = repository.getTotalIncomeThisMonth()
-            categoryBreakdown = repository.getCategoryBreakdown()
+            try {
+                totalSpent = repository.getTotalSpentThisMonth()
+                totalIncome = repository.getTotalIncomeThisMonth()
+                categoryBreakdown = repository.getCategoryBreakdown()
+                error = null
+            } catch (e: Exception) {
+                error = "Failed to load analytics: ${e.message}"
+            } finally {
+                isLoading = false
+            }
         }
     }
 
