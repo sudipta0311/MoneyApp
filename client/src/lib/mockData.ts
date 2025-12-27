@@ -4,6 +4,7 @@ export interface Transaction {
   source: 'SMS' | 'Email';
   timestamp: Date;
   category: 'Food' | 'Entertainment' | 'EMI Home Loan' | 'EMI Car Loan' | 'Utilities' | 'Shopping' | 'Investment' | 'Other';
+  investmentType?: 'SIP' | 'Mutual Fund' | 'Stocks' | 'PPF' | 'NPS' | 'Bonds' | 'Other';
   explanation: {
     summary: string;
     amount: number;
@@ -56,9 +57,10 @@ export const MOCK_TRANSACTIONS: Transaction[] = [
     source: 'SMS',
     timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6),
     category: 'Investment',
+    investmentType: 'SIP',
     rawMessage: 'SIP of Rs 5,000 debited for mutual fund ICICIPRUMF. Ref: SIP-122024. NAV: Rs 45.23',
     explanation: {
-      summary: 'Your monthly SIP of ₹5,000 for mutual fund was processed.',
+      summary: 'Your monthly SIP of ₹5,000 for ICICI Prudential MF was processed.',
       amount: 5000.00,
       currency: '₹',
       type: 'debit',
@@ -165,23 +167,110 @@ export const MOCK_TRANSACTIONS: Transaction[] = [
   },
   {
     id: 'tx-10',
-    source: 'SMS',
+    source: 'Email',
     timestamp: new Date(Date.now() - 1000 * 60 * 60 * 168),
     category: 'Investment',
-    rawMessage: 'Stock purchase of 10 shares at Rs 2,450 each. Total: Rs 24,500. Broker: ICICI Direct.',
+    investmentType: 'Stocks',
+    rawMessage: 'Stock purchase of 10 shares at Rs 2,450 each. Total: Rs 24,500. Broker: Zerodha.',
     explanation: {
-      summary: 'You purchased stocks worth ₹24,500.',
+      summary: 'You purchased stocks worth ₹24,500 via Zerodha.',
       amount: 24500.00,
       currency: '₹',
       type: 'debit',
-      merchant: 'ICICI Direct',
+      merchant: 'Zerodha',
       method: 'Stock Purchase',
       referenceNo: 'STK-20122024'
+    }
+  },
+  {
+    id: 'tx-11',
+    source: 'SMS',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 192),
+    category: 'Investment',
+    investmentType: 'Mutual Fund',
+    rawMessage: 'Mutual fund purchase of ₹10,000 for Axis Bluechip Fund. Ref: MF-101224. NAV: ₹45.50',
+    explanation: {
+      summary: 'You purchased ₹10,000 of Axis Bluechip Fund.',
+      amount: 10000.00,
+      currency: '₹',
+      type: 'debit',
+      merchant: 'Axis Mutual Fund',
+      method: 'Lump-sum Investment',
+      referenceNo: 'MF-101224'
+    }
+  },
+  {
+    id: 'tx-12',
+    source: 'SMS',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 216),
+    category: 'Investment',
+    investmentType: 'SIP',
+    rawMessage: 'SIP of Rs 3,000 debited for HDFC Mid-Cap Opportunities. Ref: SIP-101224.',
+    explanation: {
+      summary: 'Your monthly SIP of ₹3,000 for HDFC Mid-Cap Opportunities was processed.',
+      amount: 3000.00,
+      currency: '₹',
+      type: 'debit',
+      merchant: 'HDFC Mutual Fund',
+      method: 'SIP',
+      referenceNo: 'SIP-101224'
+    }
+  },
+  {
+    id: 'tx-13',
+    source: 'Email',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 240),
+    category: 'Investment',
+    investmentType: 'PPF',
+    rawMessage: 'PPF contribution of ₹50,000 credited to your account. FY 2024-25. Interest: ₹1,250',
+    explanation: {
+      summary: 'Your PPF contribution of ₹50,000 was processed successfully.',
+      amount: 50000.00,
+      currency: '₹',
+      type: 'debit',
+      merchant: 'Public Provident Fund',
+      method: 'PPF Contribution',
+      referenceNo: 'PPF-FY2024-25'
+    }
+  },
+  {
+    id: 'tx-14',
+    source: 'SMS',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 264),
+    category: 'Investment',
+    investmentType: 'Stocks',
+    rawMessage: 'Stock purchase via Groww: 5 shares of TCS at ₹3,800 each. Total: ₹19,000. Ref: GRW-091224',
+    explanation: {
+      summary: 'You purchased TCS shares worth ₹19,000 via Groww.',
+      amount: 19000.00,
+      currency: '₹',
+      type: 'debit',
+      merchant: 'Groww',
+      method: 'Stock Purchase',
+      referenceNo: 'GRW-091224'
+    }
+  },
+  {
+    id: 'tx-15',
+    source: 'SMS',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 288),
+    category: 'Investment',
+    investmentType: 'NPS',
+    rawMessage: 'NPS contribution of ₹25,000 debited from your account. Tier 1. Ref: NPS-081224.',
+    explanation: {
+      summary: 'Your NPS (National Pension Scheme) contribution of ₹25,000 was debited.',
+      amount: 25000.00,
+      currency: '₹',
+      type: 'debit',
+      merchant: 'NPS Trust',
+      method: 'NPS Contribution',
+      referenceNo: 'NPS-081224'
     }
   }
 ];
 
 export type Category = 'Food' | 'Entertainment' | 'EMI Home Loan' | 'EMI Car Loan' | 'Utilities' | 'Shopping' | 'Investment' | 'Other';
+export type InvestmentType = 'SIP' | 'Mutual Fund' | 'Stocks' | 'PPF' | 'NPS' | 'Bonds' | 'Other';
 
 export const CATEGORY_COLORS: Record<Category, string> = {
   'Food': '#3B82F6',
@@ -191,5 +280,15 @@ export const CATEGORY_COLORS: Record<Category, string> = {
   'Utilities': '#14B8A6',
   'Shopping': '#EC4899',
   'Investment': '#10B981',
+  'Other': '#6B7280'
+};
+
+export const INVESTMENT_COLORS: Record<InvestmentType, string> = {
+  'SIP': '#06B6D4',
+  'Mutual Fund': '#8B5CF6',
+  'Stocks': '#F59E0B',
+  'PPF': '#10B981',
+  'NPS': '#6366F1',
+  'Bonds': '#EC4899',
   'Other': '#6B7280'
 };

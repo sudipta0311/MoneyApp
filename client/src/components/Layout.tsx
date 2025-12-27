@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
-import { Home, BarChart3, Shield, Lock } from 'lucide-react';
+import { Home, BarChart3, TrendingUp, Shield, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 
@@ -16,11 +16,11 @@ export function Layout({ children }: LayoutProps) {
     return (
       <Link href={href}>
         <div className={cn(
-          "flex flex-col items-center justify-center gap-1 p-2 w-14 transition-colors",
+          "flex flex-col items-center justify-center gap-0.5 p-1.5 px-2 transition-colors",
           isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
         )}>
           <Icon className={cn("w-5 h-5", isActive && "fill-current opacity-20")} strokeWidth={isActive ? 2.5 : 2} />
-          <span className="text-[9px] font-medium text-center">{label}</span>
+          <span className="text-[8px] font-medium text-center leading-tight">{label}</span>
         </div>
       </Link>
     );
@@ -47,10 +47,11 @@ export function Layout({ children }: LayoutProps) {
         </main>
 
         {/* Bottom Navigation */}
-        <nav className="absolute bottom-0 left-0 right-0 bg-background border-t border-border px-3 py-2 pb-6 md:pb-2 z-40">
-          <div className="flex justify-around items-center">
+        <nav className="absolute bottom-0 left-0 right-0 bg-background border-t border-border px-1.5 py-1.5 pb-6 md:pb-1.5 z-40">
+          <div className="flex justify-around items-center gap-1">
             <NavItem href="/" icon={Home} label="Transactions" />
             <NavItem href="/analytics" icon={BarChart3} label="Analytics" />
+            <NavItem href="/investments" icon={TrendingUp} label="Investments" />
             <NavItem href="/permissions" icon={Shield} label="Permissions" />
             <NavItem href="/disclaimer" icon={Lock} label="Privacy" />
           </div>
