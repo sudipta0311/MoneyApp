@@ -1,8 +1,9 @@
 import React from 'react';
 import { Layout } from '@/components/Layout';
 import { TransactionCard } from '@/components/TransactionCard';
+import { UploadStatement } from '@/components/UploadStatement';
 import { useTransactions, useCreateTransaction, type Transaction as APITransaction } from '@/lib/api';
-import { Bell, Search, Filter, ScanLine } from 'lucide-react';
+import { Bell, Search, Filter, ScanLine, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
@@ -70,6 +71,14 @@ export default function Home() {
       <div className="px-5 space-y-2 pt-4 pb-2">
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Recent Transactions</h2>
+          <UploadStatement 
+            trigger={
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5 text-primary hover:text-primary" data-testid="button-upload-header">
+                <Upload className="w-3.5 h-3.5" />
+                Import Statement
+              </Button>
+            }
+          />
         </div>
 
         {isLoading ? (

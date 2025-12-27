@@ -1,7 +1,14 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import multer from "multer";
 import { storage } from "./storage";
 import { insertTransactionSchema } from "@shared/schema";
+import { parsePDF, parseCSV, parseExcel, convertToInsertTransaction, isValidTransaction } from "./statementParser";
+
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
 
 export async function registerRoutes(
   httpServer: Server,
@@ -85,6 +92,63 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching category analytics:", error);
       res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
+  app.post("/api/upload-statement", upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const { buffer, originalname, mimetype } = req.file;
+      const ext = originalname.toLowerCase().split('.').pop();
+      
+      let parsedTransactions: any[] = [];
+      
+      if (ext === 'pdf' || mimetype === 'application/pdf') {
+        parsedTransactions = await parsePDF(buffer);
+      } else if (ext === 'csv' || mimetype === 'text/csv') {
+        parsedTransactions = parseCSV(buffer);
+      } else if (ext === 'xlsx' || ext === 'xls' || mimetype.includes('spreadsheet') || mimetype.includes('excel')) {
+        parsedTransactions = parseExcel(buffer);
+      } else {
+        return res.status(400).json({ error: "Unsupported file format. Please upload PDF, CSV, or Excel files." });
+      }
+
+      const validTransactions = parsedTransactions.filter(isValidTransaction);
+      
+      if (validTransactions.length === 0) {
+        return res.status(400).json({ 
+          error: "No valid transactions found in the uploaded file. Please check the file format.",
+          totalParsed: parsedTransactions.length
+        });
+      }
+
+      const savedTransactions = [];
+      const errors = [];
+      
+      for (const parsed of validTransactions) {
+        try {
+          const insertData = convertToInsertTransaction(parsed);
+          const validatedData = insertTransactionSchema.parse(insertData);
+          const saved = await storage.createTransaction(validatedData);
+          savedTransactions.push(saved);
+        } catch (err) {
+          errors.push({ description: parsed.description, error: 'Validation failed' });
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Successfully imported ${savedTransactions.length} transactions from your bank statement.`,
+        count: savedTransactions.length,
+        skipped: errors.length,
+        transactions: savedTransactions
+      });
+    } catch (error) {
+      console.error("Error processing statement upload:", error);
+      res.status(500).json({ error: "Failed to process the uploaded file. Please try again." });
     }
   });
 
