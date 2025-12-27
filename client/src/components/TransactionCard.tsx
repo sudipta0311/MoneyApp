@@ -11,7 +11,7 @@ import {
   MessageSquare,
   Check
 } from 'lucide-react';
-import { Transaction } from '@/lib/mockData';
+import type { Transaction } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,10 +22,15 @@ interface TransactionCardProps {
 
 export function TransactionCard({ transaction }: TransactionCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { explanation, rawMessage, source, timestamp } = transaction;
+  
+  if (!transaction) {
+    return null;
+  }
+  
+  const { rawMessage, source, timestamp, method, type, merchant, summary, amount, currency, referenceNo, balance } = transaction;
 
   const getIcon = () => {
-    switch (explanation.method) {
+    switch (method) {
       case 'UPI': return <Smartphone className="w-5 h-5" />;
       case 'Card': 
       case 'Credit Card': return <CreditCard className="w-5 h-5" />;
@@ -35,14 +40,15 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
   };
 
   const getAmountColor = () => {
-    if (explanation.type === 'credit') return 'text-green-600 dark:text-green-400';
-    if (explanation.type === 'alert') return 'text-orange-600 dark:text-orange-400';
+    if (type === 'credit') return 'text-green-600 dark:text-green-400';
+    if (type === 'alert') return 'text-orange-600 dark:text-orange-400';
     return 'text-primary';
   };
 
-  const formatTime = (date: Date) => {
+  const formatTime = (date: string | Date) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
     const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
+    const diffMs = now.getTime() - dateObj.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
@@ -52,7 +58,7 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
     
-    return date.toLocaleDateString();
+    return dateObj.toLocaleDateString();
   };
 
   return (
@@ -70,7 +76,7 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
               </div>
               <div className="min-w-0">
                 <h3 className="font-semibold text-foreground text-sm leading-tight">
-                  {explanation.merchant || 'Transaction'}
+                  {merchant || 'Transaction'}
                 </h3>
                 <p className="text-xs text-muted-foreground font-medium mt-0.5">
                   {source} • {formatTime(timestamp)}
@@ -78,14 +84,14 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
               </div>
             </div>
             <div className={cn("text-base font-bold font-mono tracking-tight ml-2 flex-shrink-0", getAmountColor())}>
-              {explanation.type === 'credit' ? '+' : ''}
-              {explanation.currency}{explanation.amount.toLocaleString()}
+              {type === 'credit' ? '+' : ''}
+              {currency}{parseFloat(amount).toLocaleString()}
             </div>
           </div>
 
           {/* Simple Explanation */}
           <div className="text-sm font-medium text-foreground/85 leading-relaxed">
-            {explanation.summary}
+            {summary}
           </div>
         </div>
 
@@ -102,22 +108,22 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
               <div className="p-4 space-y-4">
                 {/* Key Details Grid */}
                 <div className="grid grid-cols-2 gap-3 text-xs">
-                  {explanation.method && (
+                  {method && (
                     <div>
                       <span className="text-muted-foreground block font-medium mb-1">Payment Method</span>
-                      <span className="text-foreground">{explanation.method}</span>
+                      <span className="text-foreground">{method}</span>
                     </div>
                   )}
-                  {explanation.referenceNo && (
+                  {referenceNo && (
                     <div>
                       <span className="text-muted-foreground block font-medium mb-1">Reference</span>
-                      <span className="font-mono text-[11px]">{explanation.referenceNo}</span>
+                      <span className="font-mono text-[11px]">{referenceNo}</span>
                     </div>
                   )}
-                  {explanation.balance && (
+                  {balance && (
                     <div className="col-span-2">
                       <span className="text-muted-foreground block font-medium mb-1">Updated Balance</span>
-                      <span className="text-foreground font-medium">{explanation.balance}</span>
+                      <span className="text-foreground font-medium">{balance}</span>
                     </div>
                   )}
                 </div>

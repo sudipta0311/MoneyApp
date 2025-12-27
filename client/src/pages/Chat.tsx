@@ -1,13 +1,17 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Bot, User, Sparkles, TrendingUp, HelpCircle } from 'lucide-react';
-import { slm, SLMResponse } from '@/lib/slm';
+import { LocalSLM, SLMResponse } from '@/lib/slm';
+import { useTransactions, type Transaction } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { CATEGORY_COLORS, Category } from '@/lib/mockData';
+import { CATEGORY_COLORS } from '@/lib/mockData';
+import { Skeleton } from '@/components/ui/skeleton';
+
+type Category = Transaction['category'];
 
 interface Message {
   id: string;
@@ -26,6 +30,7 @@ const SUGGESTIONS = [
 ];
 
 export default function Chat() {
+  const { data: transactions, isLoading } = useTransactions();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -37,6 +42,11 @@ export default function Chat() {
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Create SLM instance with current transactions
+  const slm = useMemo(() => {
+    return new LocalSLM(transactions || []);
+  }, [transactions]);
 
   const scrollToBottom = () => {
     if (scrollRef.current) {

@@ -1,10 +1,14 @@
 import React, { useMemo } from 'react';
 import { Layout } from '@/components/Layout';
-import { MOCK_TRANSACTIONS, Category, CATEGORY_COLORS } from '@/lib/mockData';
+import { useTransactions, type Transaction } from '@/lib/api';
+import { CATEGORY_COLORS } from '@/lib/mockData';
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, TrendingDown, Target } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+
+type Category = Transaction['category'];
 
 interface CategoryTotal {
   name: Category;
@@ -26,7 +30,21 @@ interface Prediction {
 }
 
 export default function Analytics() {
+  const { data: transactions, isLoading } = useTransactions();
+  
   const analytics = useMemo(() => {
+    if (!transactions || transactions.length === 0) {
+      return {
+        categoryTotals: [],
+        totalSpend: 0,
+        dailyTrend: [],
+        predictions: [],
+        avg7Day: 0,
+        investmentTotal: 0,
+        emiTotal: 0
+      };
+    }
+    
     // Group by category
     const categoryMap: Record<Category, { total: number; count: number }> = {
       'Food': { total: 0, count: 0 },
@@ -40,12 +58,13 @@ export default function Analytics() {
     };
 
     let totalSpend = 0;
-    const debits = MOCK_TRANSACTIONS.filter(tx => tx.explanation.type === 'debit');
+    const debits = transactions.filter(tx => tx.type === 'debit');
     
     debits.forEach(tx => {
-      categoryMap[tx.category].total += tx.explanation.amount;
+      const amount = parseFloat(tx.amount);
+      categoryMap[tx.category].total += amount;
       categoryMap[tx.category].count += 1;
-      totalSpend += tx.explanation.amount;
+      totalSpend += amount;
     });
 
     // Convert to array and calculate percentages
@@ -62,8 +81,9 @@ export default function Analytics() {
     // Daily spend trend (last 30 days)
     const dailyMap: Record<string, number> = {};
     debits.forEach(tx => {
-      const date = tx.timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      dailyMap[date] = (dailyMap[date] || 0) + tx.explanation.amount;
+      const txDate = typeof tx.timestamp === 'string' ? new Date(tx.timestamp) : tx.timestamp;
+      const date = txDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      dailyMap[date] = (dailyMap[date] || 0) + parseFloat(tx.amount);
     });
 
     const dailyTrend: DailySpend[] = Object.entries(dailyMap)
@@ -72,10 +92,11 @@ export default function Analytics() {
 
     // Calculate 7-day average
     const last7Days = debits.filter(tx => {
-      const daysDiff = (Date.now() - tx.timestamp.getTime()) / (1000 * 60 * 60 * 24);
+      const txDate = typeof tx.timestamp === 'string' ? new Date(tx.timestamp) : tx.timestamp;
+      const daysDiff = (Date.now() - txDate.getTime()) / (1000 * 60 * 60 * 24);
       return daysDiff <= 7;
     });
-    const avg7Day = last7Days.reduce((sum, tx) => sum + tx.explanation.amount, 0) / Math.max(last7Days.length, 1);
+    const avg7Day = last7Days.reduce((sum, tx) => sum + parseFloat(tx.amount), 0) / Math.max(last7Days.length, 1);
 
     // Predictions (if-this-continues)
     const monthlySpend = totalSpend;
@@ -109,7 +130,7 @@ export default function Analytics() {
       investmentTotal: categoryMap['Investment'].total,
       emiTotal: categoryMap['EMI Home Loan'].total + categoryMap['EMI Car Loan'].total
     };
-  }, []);
+  }, [transactions]);
 
   const chartData = analytics.categoryTotals.map(cat => ({
     name: cat.name,
@@ -117,6 +138,22 @@ export default function Analytics() {
     percentage: cat.percentage.toFixed(1)
   }));
 
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="px-5 pt-6 pb-6 space-y-4">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-96" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map(i => (
+              <Skeleton key={i} className="h-32" />
+            ))}
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+  
   return (
     <Layout>
       <div className="px-5 pt-6 pb-6 space-y-4">

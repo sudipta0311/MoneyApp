@@ -1,10 +1,14 @@
 import React, { useMemo } from 'react';
 import { Layout } from '@/components/Layout';
-import { MOCK_TRANSACTIONS, InvestmentType, INVESTMENT_COLORS } from '@/lib/mockData';
+import { useTransactions, type Transaction } from '@/lib/api';
+import { INVESTMENT_COLORS } from '@/lib/mockData';
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+
+type InvestmentType = NonNullable<Transaction['investmentType']>;
 
 interface InvestmentTotal {
   type: InvestmentType;
@@ -19,8 +23,23 @@ interface MonthlyInvestment {
 }
 
 export default function Investments() {
+  const { data: transactions, isLoading } = useTransactions();
+  
   const investmentData = useMemo(() => {
-    const investments = MOCK_TRANSACTIONS.filter(tx => tx.category === 'Investment');
+    if (!transactions || transactions.length === 0) {
+      return {
+        investmentTotals: [],
+        totalInvestment: 0,
+        monthlyTrend: [],
+        avgMonthlyInvestment: 0,
+        investments: [],
+        sipTotal: 0,
+        sipCount: 0,
+        avgMonthlySIP: 0
+      };
+    }
+    
+    const investments = transactions.filter(tx => tx.category === 'Investment');
 
     // Group by investment type
     const investmentMap: Record<InvestmentType, { total: number; count: number }> = {
@@ -37,9 +56,10 @@ export default function Investments() {
 
     investments.forEach(inv => {
       const type = inv.investmentType || 'Other';
-      investmentMap[type].total += inv.explanation.amount;
+      const amount = parseFloat(inv.amount);
+      investmentMap[type].total += amount;
       investmentMap[type].count += 1;
-      totalInvestment += inv.explanation.amount;
+      totalInvestment += amount;
     });
 
     // Convert to array and calculate percentages
@@ -56,8 +76,9 @@ export default function Investments() {
     // Monthly investment trend
     const monthlyMap: Record<string, number> = {};
     investments.forEach(inv => {
-      const date = inv.timestamp.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-      monthlyMap[date] = (monthlyMap[date] || 0) + inv.explanation.amount;
+      const txDate = typeof inv.timestamp === 'string' ? new Date(inv.timestamp) : inv.timestamp;
+      const date = txDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      monthlyMap[date] = (monthlyMap[date] || 0) + parseFloat(inv.amount);
     });
 
     const monthlyTrend: MonthlyInvestment[] = Object.entries(monthlyMap)
@@ -71,7 +92,7 @@ export default function Investments() {
 
     // SIP calculation
     const sipTransactions = investments.filter(inv => inv.investmentType === 'SIP');
-    const sipTotal = sipTransactions.reduce((sum, inv) => sum + inv.explanation.amount, 0);
+    const sipTotal = sipTransactions.reduce((sum, inv) => sum + parseFloat(inv.amount), 0);
     const sipCount = sipTransactions.length;
     const avgMonthlySIP = sipCount > 0 ? sipTotal / sipCount : 0;
 
@@ -85,7 +106,7 @@ export default function Investments() {
       sipCount,
       avgMonthlySIP
     };
-  }, []);
+  }, [transactions]);
 
   const chartData = investmentData.investmentTotals.map(inv => ({
     name: inv.type,
@@ -93,6 +114,22 @@ export default function Investments() {
     percentage: inv.percentage.toFixed(1)
   }));
 
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="px-5 pt-6 pb-6 space-y-4">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-96" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1, 2].map(i => (
+              <Skeleton key={i} className="h-32" />
+            ))}
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+  
   return (
     <Layout>
       <div className="px-5 pt-6 pb-6 space-y-4">
@@ -258,11 +295,13 @@ export default function Investments() {
                   <div className="flex justify-between items-start mb-1">
                     <div>
                       <p className="text-sm font-medium text-foreground">{inv.investmentType}</p>
-                      <p className="text-xs text-muted-foreground">{inv.explanation.merchant}</p>
+                      <p className="text-xs text-muted-foreground">{inv.merchant}</p>
                     </div>
-                    <span className="text-sm font-bold text-green-600 dark:text-green-400">₹{inv.explanation.amount.toLocaleString('en-IN')}</span>
+                    <span className="text-sm font-bold text-green-600 dark:text-green-400">₹{parseFloat(inv.amount).toLocaleString('en-IN')}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">{inv.timestamp.toLocaleDateString('en-IN')}</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {(typeof inv.timestamp === 'string' ? new Date(inv.timestamp) : inv.timestamp).toLocaleDateString('en-IN')}
+                  </p>
                 </CardContent>
               </Card>
             ))}

@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Layout } from '@/components/Layout';
 import { TransactionCard } from '@/components/TransactionCard';
-import { MOCK_TRANSACTIONS, Transaction } from '@/lib/mockData';
+import { useTransactions, useCreateTransaction, type Transaction as APITransaction } from '@/lib/api';
 import { Bell, Search, Filter, ScanLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Home() {
-  const [transactions, setTransactions] = useState<Transaction[]>(MOCK_TRANSACTIONS);
+  const { data: transactions, isLoading } = useTransactions();
+  const createTransaction = useCreateTransaction();
 
   const simulateNewMessage = () => {
     toast({
@@ -17,26 +19,26 @@ export default function Home() {
     });
     
     setTimeout(() => {
-      const newTx: Transaction = {
-        id: `new-${Date.now()}`,
+      createTransaction.mutate({
+        rawMessage: 'Sent Rs. 1500.00 to Zomato via UPI-556677. Ref: LUNCH ORDER.',
         source: 'SMS',
         timestamp: new Date(),
-        rawMessage: 'Sent Rs. 1500.00 to Zomato via UPI-556677. Ref: LUNCH ORDER.',
-        explanation: {
-          summary: 'You paid ₹1,500 using UPI to Zomato.',
-          amount: 1500.00,
-          currency: '₹',
-          type: 'debit',
-          merchant: 'Zomato',
-          method: 'UPI',
-          referenceNo: 'LUNCH ORDER',
-          balance: '₹10,950.50'
+        category: 'Food',
+        summary: 'You paid ₹1,500 using UPI to Zomato.',
+        amount: '1500.00',
+        currency: '₹',
+        type: 'debit',
+        merchant: 'Zomato',
+        method: 'UPI',
+        referenceNo: 'LUNCH ORDER',
+        balance: '₹10,950.50'
+      }, {
+        onSuccess: () => {
+          toast({
+            title: "Transaction Explained",
+            description: "Zomato payment of ₹1,500 added to your list.",
+          });
         }
-      };
-      setTransactions([newTx, ...transactions]);
-      toast({
-        title: "Transaction Explained",
-        description: "Zomato payment of ₹1,500 added to your list.",
       });
     }, 1500);
   };
@@ -70,7 +72,16 @@ export default function Home() {
           <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Recent Transactions</h2>
         </div>
 
-        {transactions.length > 0 ? (
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-card rounded-lg p-4">
+                <Skeleton className="h-4 w-3/4 mb-2" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            ))}
+          </div>
+        ) : transactions && transactions.length > 0 ? (
           transactions.map((tx) => (
             <TransactionCard key={tx.id} transaction={tx} />
           ))

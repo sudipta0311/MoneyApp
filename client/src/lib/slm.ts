@@ -1,4 +1,6 @@
-import { Transaction, MOCK_TRANSACTIONS, Category } from './mockData';
+import type { Transaction } from './api';
+
+type Category = Transaction['category'];
 
 // Types for our "SLM" response
 export interface SLMResponse {
@@ -59,14 +61,14 @@ export class LocalSLM {
 
   private handleSpendingQuery(q: string): SLMResponse {
     // Logic to filter transactions based on query
-    let filtered = this.transactions.filter(t => t.explanation.type === 'debit');
+    let filtered = this.transactions.filter(t => t.type === 'debit');
     let category: string | null = null;
 
     // Detect Category
     if (q.includes('food')) { filtered = filtered.filter(t => t.category === 'Food'); category = 'Food'; }
     else if (q.includes('entertainment') || q.includes('movie')) { filtered = filtered.filter(t => t.category === 'Entertainment'); category = 'Entertainment'; }
     else if (q.includes('loan') || q.includes('emi')) { filtered = filtered.filter(t => t.category.includes('EMI')); category = 'EMI'; }
-    else if (q.includes('upi')) { filtered = filtered.filter(t => t.explanation.method === 'UPI'); category = 'UPI'; }
+    else if (q.includes('upi')) { filtered = filtered.filter(t => t.method === 'UPI'); category = 'UPI'; }
 
     // Detect Timeframe (simple heuristics)
     if (q.includes('last month')) {
@@ -74,7 +76,7 @@ export class LocalSLM {
        // In a real app, this would do actual date math
     }
 
-    const total = filtered.reduce((sum, t) => sum + t.explanation.amount, 0);
+    const total = filtered.reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
     if (category) {
       return {
@@ -89,7 +91,7 @@ export class LocalSLM {
       // Group by category
       const catTotals: Record<string, number> = {};
       filtered.forEach(t => {
-        catTotals[t.category] = (catTotals[t.category] || 0) + t.explanation.amount;
+        catTotals[t.category] = (catTotals[t.category] || 0) + parseFloat(t.amount);
       });
       
       const sortedCats = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
@@ -119,11 +121,11 @@ export class LocalSLM {
 
   private handleInvestmentQuery(q: string): SLMResponse {
     const investments = this.transactions.filter(t => t.category === 'Investment');
-    const total = investments.reduce((sum, t) => sum + t.explanation.amount, 0);
+    const total = investments.reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
     if (q.includes('sip')) {
       const sips = investments.filter(t => t.investmentType === 'SIP');
-      const sipTotal = sips.reduce((sum, t) => sum + t.explanation.amount, 0);
+      const sipTotal = sips.reduce((sum, t) => sum + parseFloat(t.amount), 0);
       return {
         type: 'answer',
         text: `You have made SIP payments totaling ₹${sipTotal.toLocaleString('en-IN')} recently.`
@@ -162,5 +164,3 @@ export class LocalSLM {
     };
   }
 }
-
-export const slm = new LocalSLM(MOCK_TRANSACTIONS);
