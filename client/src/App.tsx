@@ -9,6 +9,7 @@ import Analytics from "@/pages/Analytics";
 import Investments from "@/pages/Investments";
 import Permissions from "@/pages/Permissions";
 import Disclaimer from "@/pages/Disclaimer";
+import Chat from "@/pages/Chat";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/investments" component={Investments} />
       <Route path="/permissions" component={Permissions} />
       <Route path="/disclaimer" component={Disclaimer} />
+      <Route path="/chat" component={Chat} />
       <Route component={NotFound} />
     </Switch>
   );

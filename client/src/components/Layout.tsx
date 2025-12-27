@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
-import { Home, BarChart3, TrendingUp, Shield, Lock } from 'lucide-react';
+import { Home, BarChart3, TrendingUp, Shield, Lock, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 
@@ -47,13 +47,13 @@ export function Layout({ children }: LayoutProps) {
         </main>
 
         {/* Bottom Navigation */}
-        <nav className="absolute bottom-0 left-0 right-0 bg-background border-t border-border px-1.5 py-1.5 pb-6 md:pb-1.5 z-40">
-          <div className="flex justify-around items-center gap-1">
-            <NavItem href="/" icon={Home} label="Transactions" />
+        <nav className="absolute bottom-0 left-0 right-0 bg-background border-t border-border px-1 py-1.5 pb-6 md:pb-1.5 z-40">
+          <div className="flex justify-between items-center px-2">
+            <NavItem href="/" icon={Home} label="Home" />
             <NavItem href="/analytics" icon={BarChart3} label="Analytics" />
-            <NavItem href="/investments" icon={TrendingUp} label="Investments" />
-            <NavItem href="/permissions" icon={Shield} label="Permissions" />
-            <NavItem href="/disclaimer" icon={Lock} label="Privacy" />
+            <NavItem href="/chat" icon={MessageCircle} label="Assistant" />
+            <NavItem href="/investments" icon={TrendingUp} label="Invest" />
+            <NavItem href="/permissions" icon={Shield} label="Privacy" />
           </div>
         </nav>
         
