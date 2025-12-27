@@ -1,0 +1,86 @@
+# Explain My Money
+
+## Overview
+
+A consumer-focused mobile web application for India that explains financial transactions from SMS and Gmail in simple, plain English. The app reads user-permitted transaction messages (UPI, bank transfers, credit/debit card transactions) and provides clear explanations without giving any financial advice.
+
+**Key Principle**: This app only explains past transactions - it does NOT provide investment advice, suggest actions, or analyze portfolios.
+
+## User Preferences
+
+Preferred communication style: Simple, everyday language.
+
+## System Architecture
+
+### Frontend Architecture
+- **Framework**: React 18 with TypeScript
+- **Routing**: Wouter (lightweight client-side routing)
+- **Styling**: Tailwind CSS v4 with shadcn/ui component library (New York style)
+- **State Management**: TanStack React Query for server state
+- **Build Tool**: Vite with custom plugins for Replit integration
+- **UI Pattern**: Mobile-first design with a simulated phone frame for desktop viewing
+
+**Key Frontend Pages**:
+- Home: Transaction list with SMS/email scanning simulation
+- Analytics: Spending charts and category breakdowns using Recharts
+- Investments: Investment tracking (SIP, Mutual Funds, Stocks, PPF, NPS)
+- Chat: Local "Small Language Model" for query processing (runs entirely on device)
+- Permissions: SMS/Gmail access controls
+- Disclaimer: Privacy policy and usage terms
+
+### Backend Architecture
+- **Runtime**: Node.js with Express
+- **Language**: TypeScript with ESM modules
+- **API Pattern**: REST endpoints under `/api/*`
+- **File Upload**: Multer for bank statement parsing (PDF, CSV, Excel)
+- **Build**: esbuild for production bundling with selective dependency bundling
+
+**Key API Endpoints**:
+- `GET/POST /api/transactions` - Transaction CRUD
+- `DELETE /api/transactions/:id` - Remove transactions
+- `POST /api/upload-statement` - Parse bank statements (PDF/CSV/XLSX)
+
+### Data Storage
+- **Database**: PostgreSQL with Drizzle ORM
+- **Schema Location**: `shared/schema.ts`
+- **Key Tables**:
+  - `users`: Basic user authentication (id, username, password)
+  - `transactions`: Financial transaction records with categorization
+
+**Transaction Categories**: Food, Entertainment, EMI Home Loan, EMI Car Loan, Utilities, Shopping, Investment, Other
+
+**Investment Types**: SIP, Mutual Fund, Stocks, PPF, NPS, Bonds, Other
+
+### Statement Parser
+The backend includes parsers for extracting transactions from:
+- PDF bank statements (using pdf-parse)
+- CSV exports
+- Excel files (using xlsx library)
+
+Automatic categorization based on transaction descriptions with merchant extraction.
+
+## External Dependencies
+
+### Database
+- PostgreSQL (connection via `DATABASE_URL` environment variable)
+- Drizzle ORM for type-safe database operations
+- drizzle-kit for schema migrations (`npm run db:push`)
+
+### UI Components
+- Radix UI primitives (dialogs, dropdowns, tooltips, etc.)
+- Recharts for data visualization
+- Framer Motion for animations
+- Lucide React for icons
+
+### File Processing
+- pdf-parse: PDF document parsing
+- xlsx: Excel file parsing
+- csv-parse: CSV parsing
+
+### Session Management
+- express-session with connect-pg-simple for PostgreSQL session storage
+
+### Development Tools
+- Vite dev server with HMR
+- Custom Replit plugins (cartographer, dev-banner, runtime-error-modal)
+- TypeScript with strict mode
