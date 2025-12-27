@@ -91,7 +91,17 @@ export class LocalSLM {
       filtered.forEach(t => {
         catTotals[t.category] = (catTotals[t.category] || 0) + t.explanation.amount;
       });
-      const topCat = Object.entries(catTotals).sort((a, b) => b[1] - a[1])[0];
+      
+      const sortedCats = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
+      
+      if (sortedCats.length === 0) {
+         return {
+          type: 'answer',
+          text: "I couldn't find any spending data to analyze for that request."
+        };
+      }
+
+      const topCat = sortedCats[0];
       
       return {
         type: 'chart',
