@@ -13,17 +13,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.explainmymoney.domain.model.Country
+import com.explainmymoney.domain.model.SUPPORTED_COUNTRIES
+import com.explainmymoney.domain.model.UserSettings
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun PermissionsScreen(
+    userSettings: UserSettings?,
+    onLogin: () -> Unit,
+    onLogout: () -> Unit,
+    onCountryChange: (Country) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val smsPermission = rememberPermissionState(Manifest.permission.READ_SMS)
     val receiveSmsPermission = rememberPermissionState(Manifest.permission.RECEIVE_SMS)
+    var showCountryPicker by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -36,7 +45,7 @@ fun PermissionsScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Manage app permissions",
+                            text = "Manage app preferences",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -58,6 +67,138 @@ fun PermissionsScreen(
         ) {
             item {
                 Text(
+                    text = "ACCOUNT",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (userSettings?.isLoggedIn == true) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.AccountCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = userSettings.displayName ?: "User",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                userSettings.email?.let {
+                                    Text(
+                                        text = it,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            TextButton(onClick = onLogout) {
+                                Text("Sign Out")
+                            }
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Not signed in",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = "Sign in to sync across devices",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Button(onClick = onLogin) {
+                                Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Sign In")
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "REGION",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    onClick = { showCountryPicker = true }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Language,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Country & Currency",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "${userSettings?.countryName ?: "India"} (${userSettings?.currencySymbol ?: "₹"} ${userSettings?.currencyCode ?: "INR"})",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
                     text = "PERMISSIONS",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -68,7 +209,7 @@ fun PermissionsScreen(
             item {
                 PermissionCard(
                     title = "Read SMS Messages",
-                    description = "Required to scan your transaction SMS messages and extract financial data",
+                    description = "Required to scan your transaction SMS messages",
                     icon = Icons.Default.Sms,
                     isGranted = smsPermission.status.isGranted,
                     onRequestPermission = { smsPermission.launchPermissionRequest() }
@@ -78,7 +219,7 @@ fun PermissionsScreen(
             item {
                 PermissionCard(
                     title = "Receive SMS Notifications",
-                    description = "Allows automatic detection of new transaction messages in real-time",
+                    description = "Detect new transaction messages automatically",
                     icon = Icons.Default.NotificationsActive,
                     isGranted = receiveSmsPermission.status.isGranted,
                     onRequestPermission = { receiveSmsPermission.launchPermissionRequest() }
@@ -123,7 +264,7 @@ fun PermissionsScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "All your financial data is processed and stored locally on your phone. We never upload your transactions to any server. Your privacy is our priority.",
+                                text = "All your financial data is processed and stored locally on your phone. We never upload your transactions to any server.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                             )
@@ -162,21 +303,45 @@ fun PermissionsScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "This app helps you understand your financial transactions by reading SMS messages and bank statements. It converts complex banking messages into simple, easy-to-understand explanations.",
+                            text = "This app explains your financial transactions in simple language. It does not provide financial advice.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        HorizontalDivider()
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "Disclaimer: This app only explains your past transactions. It does not provide financial advice, investment recommendations, or suggestions for future actions.",
-                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
+        }
+
+        if (showCountryPicker) {
+            AlertDialog(
+                onDismissRequest = { showCountryPicker = false },
+                title = { Text("Select Country") },
+                text = {
+                    LazyColumn {
+                        items(SUPPORTED_COUNTRIES.size) { index ->
+                            val country = SUPPORTED_COUNTRIES[index]
+                            ListItem(
+                                headlineContent = { Text(country.name) },
+                                supportingContent = { Text("${country.currencySymbol} ${country.currencyCode}") },
+                                leadingContent = {
+                                    if (country.code == userSettings?.countryCode) {
+                                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                },
+                                modifier = Modifier.clickable {
+                                    onCountryChange(country)
+                                    showCountryPicker = false
+                                }
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showCountryPicker = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
@@ -245,4 +410,10 @@ private fun PermissionCard(
             }
         }
     }
+}
+
+private fun androidx.compose.ui.Modifier.clickable(onClick: () -> Unit): androidx.compose.ui.Modifier {
+    return this.then(
+        androidx.compose.foundation.clickable { onClick() }
+    )
 }

@@ -6,15 +6,17 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.explainmymoney.domain.model.Transaction
+import com.explainmymoney.domain.model.UserSettings
 
 @Database(
-    entities = [Transaction::class],
-    version = 1,
+    entities = [Transaction::class, UserSettings::class],
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
+    abstract fun userSettingsDao(): UserSettingsDao
 
     companion object {
         @Volatile

@@ -2,6 +2,7 @@ import React from 'react';
 import { Layout } from '@/components/Layout';
 import { TransactionCard } from '@/components/TransactionCard';
 import { UploadStatement } from '@/components/UploadStatement';
+import { ProfileMenu } from '@/components/ProfileMenu';
 import { useTransactions, useCreateTransaction, type Transaction as APITransaction } from '@/lib/api';
 import { Bell, Search, Filter, ScanLine, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,9 +53,12 @@ export default function Home() {
              <h1 className="text-2xl font-bold tracking-tight text-foreground leading-none">Explain My Money</h1>
              <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider mt-1">Understand your transactions</p>
           </div>
-          <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted h-9 w-9">
-            <Bell className="w-5 h-5 text-muted-foreground" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted h-9 w-9">
+              <Bell className="w-5 h-5 text-muted-foreground" />
+            </Button>
+            <ProfileMenu />
+          </div>
         </header>
 
         {/* Search Bar */}

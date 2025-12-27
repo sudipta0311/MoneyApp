@@ -39,13 +39,25 @@ Preferred communication style: Simple, everyday language.
 - `GET/POST /api/transactions` - Transaction CRUD
 - `DELETE /api/transactions/:id` - Remove transactions
 - `POST /api/upload-statement` - Parse bank statements (PDF/CSV/XLSX)
+- `GET /api/auth/user` - Get authenticated user details
+- `PUT /api/user/settings` - Update user country/currency preferences
+- `GET /api/login` - Initiate OAuth login via Replit Auth
+- `GET /api/logout` - End user session
 
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM
 - **Schema Location**: `shared/schema.ts`
+- **Authentication Schema**: `shared/models/auth.ts` (Replit Auth integration)
 - **Key Tables**:
-  - `users`: Basic user authentication (id, username, password)
+  - `users`: User accounts with OAuth data (id, email, firstName, lastName, profileImageUrl, country, currency, currencySymbol)
+  - `sessions`: Session storage for authentication
   - `transactions`: Financial transaction records with categorization
+
+### Authentication
+- **Provider**: Replit Auth (OpenID Connect)
+- **Supported Login Methods**: Google, GitHub, Apple, X (Twitter), Email/Password
+- **Session Storage**: PostgreSQL via connect-pg-simple
+- **User Profile**: Displays avatar, name, and country/currency preferences in header
 
 **Transaction Categories**: Food, Entertainment, EMI Home Loan, EMI Car Loan, Utilities, Shopping, Investment, Other
 

@@ -1,23 +1,13 @@
-import { type User, type InsertUser, type Transaction, type InsertTransaction, users, transactions } from "@shared/schema";
-import { randomUUID } from "crypto";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { type User, type UpsertUser, type Transaction, type InsertTransaction, type UserSettings, type InsertUserSettings, users, transactions, userSettings } from "@shared/schema";
 import { eq, desc, and, gte, lte } from "drizzle-orm";
-import pg from "pg";
-
-const { Pool } = pg;
-
-// Database connection
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-const db = drizzle(pool);
+import { db } from "./db";
 
 export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  updateUserSettings(userId: string, country: string, currency: string, currencySymbol: string): Promise<User>;
   
   // Transaction operations
   getAllTransactions(): Promise<Transaction[]>;
@@ -36,14 +26,33 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
     return result[0];
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const result = await db.insert(users).values(insertUser).returning();
-    return result[0];
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  async updateUserSettings(userId: string, country: string, currency: string, currencySymbol: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ country, currency, currencySymbol, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
   }
   
   // Transaction operations

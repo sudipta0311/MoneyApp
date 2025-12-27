@@ -4,6 +4,14 @@ import multer from "multer";
 import { storage } from "./storage";
 import { insertTransactionSchema } from "@shared/schema";
 import { parsePDF, parseCSV, parseExcel, convertToInsertTransaction, isValidTransaction } from "./statementParser";
+import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { z } from "zod";
+
+const updateUserSettingsSchema = z.object({
+  country: z.string().min(2).max(3),
+  currency: z.string().min(3).max(3),
+  currencySymbol: z.string().min(1).max(5),
+});
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -14,6 +22,29 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Setup authentication first
+  await setupAuth(app);
+  registerAuthRoutes(app);
+
+  // User settings route
+  app.put("/api/user/settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const result = updateUserSettingsSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid settings data", details: result.error.issues });
+      }
+      
+      const { country, currency, currencySymbol } = result.data;
+      const user = await storage.updateUserSettings(userId, country, currency, currencySymbol);
+      res.json(user);
+    } catch (error) {
+      console.error("Error updating user settings:", error);
+      res.status(500).json({ error: "Failed to update settings" });
+    }
+  });
+
   // Transaction routes
   app.get("/api/transactions", async (req, res) => {
     try {
