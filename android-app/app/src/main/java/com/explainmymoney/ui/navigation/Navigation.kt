@@ -13,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import android.content.Intent
 import com.explainmymoney.domain.slm.SlmDownloadState
 import com.explainmymoney.ui.screens.analytics.AnalyticsScreen
 import com.explainmymoney.ui.screens.chat.ChatScreen
@@ -60,6 +61,7 @@ fun MainNavigation(
     val slmDownloadState by viewModel.slmDownloadState.collectAsState()
     val slmDownloadProgress by viewModel.slmDownloadProgress.collectAsState()
     val slmIsReady by viewModel.slmIsReady.collectAsState()
+    val isGmailScanning by viewModel.isGmailScanning.collectAsState()
 
     Scaffold(
         bottomBar = {
@@ -83,7 +85,10 @@ fun MainNavigation(
                     },
                     onImportFile = { uri -> viewModel.parseStatementFile(uri) },
                     onDeleteTransaction = { id -> viewModel.deleteTransaction(id) },
-                    onClearScanResult = { viewModel.clearScanResult() }
+                    onClearScanResult = { viewModel.clearScanResult() },
+                    isGmailConnected = viewModel.isGmailConnected(),
+                    isGmailScanning = isGmailScanning,
+                    onScanGmail = { viewModel.scanGmailEmails() }
                 )
             }
             composable(Screen.Analytics.route) {
@@ -125,7 +130,12 @@ fun MainNavigation(
                     isSlmModelDownloaded = viewModel.isSlmModelDownloaded(),
                     onToggleSlm = { enabled -> viewModel.toggleSlmEnabled(enabled) },
                     onDownloadSlm = { viewModel.downloadSlmModel() },
-                    onDeleteSlm = { viewModel.deleteSlmModel() }
+                    onDeleteSlm = { viewModel.deleteSlmModel() },
+                    isGmailConnected = viewModel.isGmailConnected(),
+                    gmailEmail = userSettings?.gmailEmail,
+                    onGetGmailSignInIntent = { viewModel.getGmailSignInIntent() },
+                    onGmailSignInResult = { account -> viewModel.handleGmailSignInResult(account) },
+                    onDisconnectGmail = { viewModel.disconnectGmail() }
                 )
             }
         }

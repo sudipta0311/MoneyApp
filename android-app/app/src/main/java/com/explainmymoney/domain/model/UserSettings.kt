@@ -17,7 +17,9 @@ data class UserSettings(
     val currencySymbol: String = "₹",
     val slmEnabled: Boolean = false,
     val slmModelDownloaded: Boolean = false,
-    val slmModelPath: String? = null
+    val slmModelPath: String? = null,
+    val gmailConnected: Boolean = false,
+    val gmailEmail: String? = null
 )
 
 enum class SlmStatus {

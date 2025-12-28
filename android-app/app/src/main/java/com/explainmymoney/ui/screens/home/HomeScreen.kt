@@ -34,6 +34,9 @@ fun HomeScreen(
     onImportFile: (Uri) -> Unit,
     onDeleteTransaction: (Long) -> Unit,
     onClearScanResult: () -> Unit,
+    isGmailConnected: Boolean = false,
+    isGmailScanning: Boolean = false,
+    onScanGmail: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -96,7 +99,7 @@ fun HomeScreen(
                     enabled = !isLoading,
                     modifier = Modifier.weight(1f)
                 ) {
-                    if (isLoading) {
+                    if (isLoading && !isGmailScanning) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp,
@@ -116,7 +119,37 @@ fun HomeScreen(
                 ) {
                     Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Import File")
+                    Text("Import")
+                }
+            }
+
+            if (isGmailConnected) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Button(
+                        onClick = onScanGmail,
+                        enabled = !isLoading,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiary
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (isGmailScanning) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onTertiary
+                            )
+                        } else {
+                            Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(18.dp))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (isGmailScanning) "Scanning Emails..." else "Scan Gmail Transactions")
+                    }
                 }
             }
 
@@ -199,7 +232,7 @@ fun HomeScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "Scan your SMS or import a bank statement",
+                            text = "Scan your SMS, Gmail, or import a bank statement",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

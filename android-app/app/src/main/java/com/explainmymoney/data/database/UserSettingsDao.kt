@@ -29,4 +29,7 @@ interface UserSettingsDao {
 
     @Query("UPDATE user_settings SET slmModelDownloaded = :downloaded, slmModelPath = :modelPath WHERE id = 1")
     suspend fun updateSlmModelStatus(downloaded: Boolean, modelPath: String?)
+
+    @Query("UPDATE user_settings SET gmailConnected = :connected, gmailEmail = :email WHERE id = 1")
+    suspend fun updateGmailStatus(connected: Boolean, email: String?)
 }

@@ -8,9 +8,12 @@ import android.provider.Telephony
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.explainmymoney.data.database.AppDatabase
+import com.explainmymoney.data.gmail.GmailReader
+import com.explainmymoney.data.parser.EmailParser
 import com.explainmymoney.data.parser.SmsParser
 import com.explainmymoney.data.parser.StatementParser
 import com.explainmymoney.data.repository.TransactionRepository
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.explainmymoney.domain.model.Country
 import com.explainmymoney.domain.model.Transaction
 import com.explainmymoney.domain.model.TransactionCategory
@@ -36,6 +39,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val smsParser = SmsParser()
     private val statementParser = StatementParser(application)
     val slmManager = SlmManager(application)
+    val gmailReader = GmailReader(application)
+    private val emailParser = EmailParser()
     
     val transactions: StateFlow<List<Transaction>> = repository.getAllTransactions()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -66,6 +71,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     val slmDownloadState: StateFlow<SlmDownloadState> = slmManager.downloadState
     val slmIsReady: StateFlow<Boolean> = slmManager.isModelReady
+    
+    private val _isGmailScanning = MutableStateFlow(false)
+    val isGmailScanning: StateFlow<Boolean> = _isGmailScanning.asStateFlow()
     
     init {
         loadUserSettings()
@@ -282,6 +290,52 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     fun isSlmEnabled(): Boolean {
         return _userSettings.value?.slmEnabled == true && slmManager.isModelReady.value
+    }
+    
+    // Gmail functions
+    fun isGmailConnected(): Boolean {
+        return gmailReader.isAuthenticated()
+    }
+    
+    fun getGmailSignInIntent() = gmailReader.getSignInIntent()
+    
+    fun handleGmailSignInResult(account: GoogleSignInAccount?) {
+        viewModelScope.launch {
+            val success = gmailReader.handleSignInResult(account)
+            if (success && account != null) {
+                userSettingsDao.updateGmailStatus(true, account.email)
+            }
+        }
+    }
+    
+    fun scanGmailEmails() {
+        viewModelScope.launch {
+            _isGmailScanning.value = true
+            _isLoading.value = true
+            try {
+                val emails = gmailReader.readTransactionEmails(50)
+                val parsedTransactions = emailParser.parseEmails(emails)
+                
+                if (parsedTransactions.isNotEmpty()) {
+                    repository.insertTransactions(parsedTransactions)
+                    loadAnalytics()
+                    _scanResult.value = "Found ${parsedTransactions.size} transactions from ${emails.size} emails"
+                } else {
+                    _scanResult.value = "No transaction emails found"
+                }
+            } catch (e: Exception) {
+                _scanResult.value = "Error scanning emails: ${e.message ?: "Unknown error"}"
+            }
+            _isLoading.value = false
+            _isGmailScanning.value = false
+        }
+    }
+    
+    fun disconnectGmail() {
+        viewModelScope.launch {
+            gmailReader.signOut()
+            userSettingsDao.updateGmailStatus(false, null)
+        }
     }
     
     override fun onCleared() {

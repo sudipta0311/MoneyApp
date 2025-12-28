@@ -1,6 +1,10 @@
 package com.explainmymoney.ui.screens.permissions
 
 import android.Manifest
+import android.app.Activity
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +26,9 @@ import com.explainmymoney.domain.slm.SlmDownloadState
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.common.api.ApiException
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
@@ -38,12 +45,32 @@ fun PermissionsScreen(
     onToggleSlm: (Boolean) -> Unit,
     onDownloadSlm: () -> Unit,
     onDeleteSlm: () -> Unit,
+    isGmailConnected: Boolean = false,
+    gmailEmail: String? = null,
+    onGetGmailSignInIntent: () -> Intent = { Intent() },
+    onGmailSignInResult: (GoogleSignInAccount?) -> Unit = {},
+    onDisconnectGmail: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val smsPermission = rememberPermissionState(Manifest.permission.READ_SMS)
     val receiveSmsPermission = rememberPermissionState(Manifest.permission.RECEIVE_SMS)
     var showCountryPicker by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showGmailDisconnectConfirmation by remember { mutableStateOf(false) }
+
+    val gmailSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            try {
+                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                val account = task.getResult(ApiException::class.java)
+                onGmailSignInResult(account)
+            } catch (e: ApiException) {
+                onGmailSignInResult(null)
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -211,6 +238,25 @@ fun PermissionsScreen(
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
+                    text = "DATA SOURCES",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            item {
+                GmailConnectionCard(
+                    isConnected = isGmailConnected,
+                    email = gmailEmail,
+                    onConnect = { gmailSignInLauncher.launch(onGetGmailSignInIntent()) },
+                    onDisconnect = { showGmailDisconnectConfirmation = true }
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
                     text = "AI ASSISTANT",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -300,7 +346,7 @@ fun PermissionsScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "All your financial data is processed and stored locally on your phone. We never upload your transactions to any server.",
+                                text = "All your financial data is processed and stored locally on your phone. We never upload your transactions to any server. Gmail access is read-only and used solely to find transaction emails.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                             )
@@ -404,6 +450,101 @@ fun PermissionsScreen(
                     }
                 }
             )
+        }
+
+        if (showGmailDisconnectConfirmation) {
+            AlertDialog(
+                onDismissRequest = { showGmailDisconnectConfirmation = false },
+                icon = { Icon(Icons.Default.Email, contentDescription = null) },
+                title = { Text("Disconnect Gmail?") },
+                text = { 
+                    Text("This will revoke the app's access to your Gmail. You can reconnect anytime to scan transaction emails again.") 
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            onDisconnectGmail()
+                            showGmailDisconnectConfirmation = false
+                        }
+                    ) {
+                        Text("Disconnect", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showGmailDisconnectConfirmation = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun GmailConnectionCard(
+    isConnected: Boolean,
+    email: String?,
+    onConnect: () -> Unit,
+    onDisconnect: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Email,
+                contentDescription = null,
+                tint = if (isConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Gmail Access",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (isConnected && email != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = email,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "Connect to scan transaction emails",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            if (isConnected) {
+                TextButton(onClick = onDisconnect) {
+                    Text("Disconnect")
+                }
+            } else {
+                Button(onClick = onConnect) {
+                    Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Connect")
+                }
+            }
         }
     }
 }
