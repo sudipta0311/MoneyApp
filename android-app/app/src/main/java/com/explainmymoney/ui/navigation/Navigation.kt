@@ -13,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.explainmymoney.domain.slm.SlmDownloadState
 import com.explainmymoney.ui.screens.analytics.AnalyticsScreen
 import com.explainmymoney.ui.screens.chat.ChatScreen
 import com.explainmymoney.ui.screens.home.HomeScreen
@@ -56,6 +57,9 @@ fun MainNavigation(
     val totalSpent by viewModel.totalSpentThisMonth.collectAsState()
     val totalIncome by viewModel.totalIncomeThisMonth.collectAsState()
     val categoryBreakdown by viewModel.categoryBreakdown.collectAsState()
+    val slmDownloadState by viewModel.slmDownloadState.collectAsState()
+    val slmDownloadProgress by viewModel.slmDownloadProgress.collectAsState()
+    val slmIsReady by viewModel.slmIsReady.collectAsState()
 
     Scaffold(
         bottomBar = {
@@ -101,7 +105,9 @@ fun MainNavigation(
             composable(Screen.Chat.route) {
                 ChatScreen(
                     transactions = transactions,
-                    currencySymbol = viewModel.getCurrencySymbol()
+                    currencySymbol = viewModel.getCurrencySymbol(),
+                    isSlmEnabled = viewModel.isSlmEnabled(),
+                    onSlmQuery = { query -> viewModel.generateSlmResponse(query) }
                 )
             }
             composable(Screen.Settings.route) {
@@ -111,7 +117,15 @@ fun MainNavigation(
                         viewModel.login("Demo User", "demo@example.com", null) 
                     },
                     onLogout = { viewModel.logout() },
-                    onCountryChange = { country -> viewModel.updateCountry(country) }
+                    onCountryChange = { country -> viewModel.updateCountry(country) },
+                    deviceCapability = viewModel.checkSlmCapability(),
+                    slmDownloadState = slmDownloadState,
+                    slmDownloadProgress = slmDownloadProgress,
+                    slmIsReady = slmIsReady,
+                    isSlmModelDownloaded = viewModel.isSlmModelDownloaded(),
+                    onToggleSlm = { enabled -> viewModel.toggleSlmEnabled(enabled) },
+                    onDownloadSlm = { viewModel.downloadSlmModel() },
+                    onDeleteSlm = { viewModel.deleteSlmModel() }
                 )
             }
         }

@@ -34,17 +34,26 @@ data class ChatMessage(
 fun ChatScreen(
     transactions: List<Transaction>,
     currencySymbol: String,
+    isSlmEnabled: Boolean = false,
+    onSlmQuery: suspend (String) -> String = { "" },
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
     var inputText by remember { mutableStateOf("") }
+    
+    val welcomeMessage = if (isSlmEnabled) {
+        "Hi! I'm your AI financial assistant running locally on your device. I can have natural conversations about your spending. Ask me anything like:\n\n• Explain my spending patterns\n• Why did I spend so much on food?\n• Compare my top categories\n• Give me a financial summary"
+    } else {
+        "Hi! I'm your local financial assistant. I can help you understand your spending. Try asking:\n\n• How much did I spend on food?\n• What's my biggest expense?\n• Show my recent transactions\n• How much did I invest this month?"
+    }
+    
     var messages by remember { 
         mutableStateOf(
             listOf(
                 ChatMessage(
-                    content = "Hi! I'm your local financial assistant. I can help you understand your spending. Try asking:\n\n• How much did I spend on food?\n• What's my biggest expense?\n• Show my recent transactions\n• How much did I invest this month?",
+                    content = welcomeMessage,
                     isUser = false
                 )
             )
@@ -55,8 +64,17 @@ fun ChatScreen(
     fun processQuery(query: String) {
         scope.launch {
             isTyping = true
-            kotlinx.coroutines.delay(500)
-            val response = generateLocalResponse(query, transactions, currencySymbol)
+            kotlinx.coroutines.delay(300)
+            
+            val response = if (isSlmEnabled) {
+                val slmResponse = onSlmQuery(query)
+                slmResponse.ifEmpty { 
+                    generateLocalResponse(query, transactions, currencySymbol) 
+                }
+            } else {
+                generateLocalResponse(query, transactions, currencySymbol)
+            }
+            
             messages = messages + ChatMessage(
                 content = response,
                 isUser = false
@@ -88,29 +106,44 @@ fun ChatScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary),
+                                .background(
+                                    if (isSlmEnabled) MaterialTheme.colorScheme.tertiary 
+                                    else MaterialTheme.colorScheme.primary
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                Icons.Default.SmartToy,
+                                if (isSlmEnabled) Icons.Default.Psychology else Icons.Default.SmartToy,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                tint = if (isSlmEnabled) MaterialTheme.colorScheme.onTertiary 
+                                       else MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "Money Assistant",
+                                text = if (isSlmEnabled) "AI Assistant" else "Money Assistant",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "Runs locally on your device",
+                                text = if (isSlmEnabled) "Powered by on-device AI" else "Runs locally on your device",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    }
+                },
+                actions = {
+                    if (isSlmEnabled) {
+                        Badge(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                        ) {
+                            Text("AI", style = MaterialTheme.typography.labelSmall)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -134,12 +167,12 @@ fun ChatScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(messages, key = { it.id }) { message ->
-                    ChatBubble(message = message)
+                    ChatBubble(message = message, isSlmEnabled = isSlmEnabled)
                 }
 
                 if (isTyping) {
                     item {
-                        TypingIndicator()
+                        TypingIndicator(isSlmEnabled = isSlmEnabled)
                     }
                 }
             }
@@ -160,7 +193,8 @@ fun ChatScreen(
                         modifier = Modifier.weight(1f),
                         placeholder = {
                             Text(
-                                "Ask about your spending...",
+                                if (isSlmEnabled) "Ask anything about your finances..." 
+                                else "Ask about your spending...",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         },
@@ -187,7 +221,7 @@ fun ChatScreen(
 }
 
 @Composable
-private fun ChatBubble(message: ChatMessage) {
+private fun ChatBubble(message: ChatMessage, isSlmEnabled: Boolean = false) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (message.isUser) Arrangement.End else Arrangement.Start
@@ -197,13 +231,17 @@ private fun ChatBubble(message: ChatMessage) {
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
+                    .background(
+                        if (isSlmEnabled) MaterialTheme.colorScheme.tertiary 
+                        else MaterialTheme.colorScheme.primary
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Default.SmartToy,
+                    if (isSlmEnabled) Icons.Default.Psychology else Icons.Default.SmartToy,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
+                    tint = if (isSlmEnabled) MaterialTheme.colorScheme.onTertiary 
+                           else MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -255,7 +293,7 @@ private fun ChatBubble(message: ChatMessage) {
 }
 
 @Composable
-private fun TypingIndicator() {
+private fun TypingIndicator(isSlmEnabled: Boolean = false) {
     Row(
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -263,13 +301,17 @@ private fun TypingIndicator() {
             modifier = Modifier
                 .size(32.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary),
+                .background(
+                    if (isSlmEnabled) MaterialTheme.colorScheme.tertiary 
+                    else MaterialTheme.colorScheme.primary
+                ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Default.SmartToy,
+                if (isSlmEnabled) Icons.Default.Psychology else Icons.Default.SmartToy,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
+                tint = if (isSlmEnabled) MaterialTheme.colorScheme.onTertiary 
+                       else MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.size(18.dp)
             )
         }

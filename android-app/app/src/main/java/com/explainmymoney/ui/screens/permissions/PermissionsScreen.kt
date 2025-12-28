@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import com.explainmymoney.domain.model.Country
 import com.explainmymoney.domain.model.SUPPORTED_COUNTRIES
 import com.explainmymoney.domain.model.UserSettings
+import com.explainmymoney.domain.slm.DeviceCapability
+import com.explainmymoney.domain.slm.SlmDownloadState
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -28,11 +30,20 @@ fun PermissionsScreen(
     onLogin: () -> Unit,
     onLogout: () -> Unit,
     onCountryChange: (Country) -> Unit,
+    deviceCapability: DeviceCapability,
+    slmDownloadState: SlmDownloadState,
+    slmDownloadProgress: Float,
+    slmIsReady: Boolean,
+    isSlmModelDownloaded: Boolean,
+    onToggleSlm: (Boolean) -> Unit,
+    onDownloadSlm: () -> Unit,
+    onDeleteSlm: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val smsPermission = rememberPermissionState(Manifest.permission.READ_SMS)
     val receiveSmsPermission = rememberPermissionState(Manifest.permission.RECEIVE_SMS)
     var showCountryPicker by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -200,6 +211,30 @@ fun PermissionsScreen(
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
+                    text = "AI ASSISTANT",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            item {
+                SlmSettingsCard(
+                    userSettings = userSettings,
+                    deviceCapability = deviceCapability,
+                    slmDownloadState = slmDownloadState,
+                    slmDownloadProgress = slmDownloadProgress,
+                    slmIsReady = slmIsReady,
+                    isSlmModelDownloaded = isSlmModelDownloaded,
+                    onToggleSlm = onToggleSlm,
+                    onDownloadSlm = onDownloadSlm,
+                    onDeleteSlm = { showDeleteConfirmation = true }
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
                     text = "PERMISSIONS",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -343,6 +378,206 @@ fun PermissionsScreen(
                     }
                 }
             )
+        }
+
+        if (showDeleteConfirmation) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirmation = false },
+                icon = { Icon(Icons.Default.Warning, contentDescription = null) },
+                title = { Text("Delete AI Model?") },
+                text = { 
+                    Text("This will delete the downloaded AI model (~2 GB) and disable advanced natural language features. You can download it again later.") 
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            onDeleteSlm()
+                            showDeleteConfirmation = false
+                        }
+                    ) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirmation = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SlmSettingsCard(
+    userSettings: UserSettings?,
+    deviceCapability: DeviceCapability,
+    slmDownloadState: SlmDownloadState,
+    slmDownloadProgress: Float,
+    slmIsReady: Boolean,
+    isSlmModelDownloaded: Boolean,
+    onToggleSlm: (Boolean) -> Unit,
+    onDownloadSlm: () -> Unit,
+    onDeleteSlm: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDownloading = slmDownloadState is SlmDownloadState.Downloading
+    
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Psychology,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Advanced AI Assistant",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Enable natural language conversations",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            if (!deviceCapability.isCapable) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Error,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = deviceCapability.reason ?: "Device not compatible",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            } else if (!isSlmModelDownloaded) {
+                Text(
+                    text = "Downloads ~2 GB model for on-device AI processing. Works offline after download.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                if (isDownloading) {
+                    Column {
+                        LinearProgressIndicator(
+                            progress = { slmDownloadProgress },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Downloading... ${(slmDownloadProgress * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    Button(
+                        onClick = onDownloadSlm,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Download AI Model (~2 GB)")
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Enable advanced AI assistant",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (slmIsReady) "Model ready" else "Model downloaded",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    Switch(
+                        checked = userSettings?.slmEnabled == true,
+                        onCheckedChange = onToggleSlm
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Storage used",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "~2 GB",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                    TextButton(
+                        onClick = onDeleteSlm,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Delete Model")
+                    }
+                }
+            }
         }
     }
 }

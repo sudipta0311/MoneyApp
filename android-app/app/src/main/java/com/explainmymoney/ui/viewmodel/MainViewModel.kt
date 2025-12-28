@@ -15,6 +15,9 @@ import com.explainmymoney.domain.model.Country
 import com.explainmymoney.domain.model.Transaction
 import com.explainmymoney.domain.model.TransactionCategory
 import com.explainmymoney.domain.model.UserSettings
+import com.explainmymoney.domain.slm.DeviceCapability
+import com.explainmymoney.domain.slm.SlmDownloadState
+import com.explainmymoney.domain.slm.SlmManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -32,6 +35,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val repository = TransactionRepository(transactionDao)
     private val smsParser = SmsParser()
     private val statementParser = StatementParser(application)
+    val slmManager = SlmManager(application)
     
     val transactions: StateFlow<List<Transaction>> = repository.getAllTransactions()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -56,6 +60,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     private val _categoryBreakdown = MutableStateFlow<Map<TransactionCategory, Double>>(emptyMap())
     val categoryBreakdown: StateFlow<Map<TransactionCategory, Double>> = _categoryBreakdown.asStateFlow()
+    
+    private val _slmDownloadProgress = MutableStateFlow(0f)
+    val slmDownloadProgress: StateFlow<Float> = _slmDownloadProgress.asStateFlow()
+    
+    val slmDownloadState: StateFlow<SlmDownloadState> = slmManager.downloadState
+    val slmIsReady: StateFlow<Boolean> = slmManager.isModelReady
     
     init {
         loadUserSettings()
@@ -215,5 +225,67 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     fun getCurrencySymbol(): String {
         return _userSettings.value?.currencySymbol ?: "₹"
+    }
+    
+    fun checkSlmCapability(): DeviceCapability {
+        return slmManager.checkDeviceCapability()
+    }
+    
+    fun isSlmModelDownloaded(): Boolean {
+        return slmManager.isModelDownloaded()
+    }
+    
+    fun toggleSlmEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userSettingsDao.updateSlmEnabled(enabled)
+            
+            if (enabled && slmManager.isModelDownloaded()) {
+                slmManager.initializeModel()
+            } else if (!enabled) {
+                slmManager.close()
+            }
+        }
+    }
+    
+    fun downloadSlmModel() {
+        viewModelScope.launch {
+            val result = slmManager.downloadModel { progress ->
+                _slmDownloadProgress.value = progress
+            }
+            
+            result.onSuccess { modelPath ->
+                userSettingsDao.updateSlmModelStatus(true, modelPath)
+                
+                if (_userSettings.value?.slmEnabled == true) {
+                    slmManager.initializeModel()
+                }
+            }
+        }
+    }
+    
+    fun deleteSlmModel() {
+        viewModelScope.launch {
+            slmManager.deleteModel()
+            userSettingsDao.updateSlmModelStatus(false, null)
+            userSettingsDao.updateSlmEnabled(false)
+        }
+    }
+    
+    suspend fun generateSlmResponse(query: String): String {
+        val inference = slmManager.getInference()
+        return if (inference != null && _userSettings.value?.slmEnabled == true) {
+            inference.generateResponse(query, transactions.value, getCurrencySymbol())
+        } else {
+            ""
+        }
+    }
+    
+    fun isSlmEnabled(): Boolean {
+        return _userSettings.value?.slmEnabled == true && slmManager.isModelReady.value
+    }
+    
+    override fun onCleared() {
+        super.onCleared()
+        slmManager.close()
     }
 }

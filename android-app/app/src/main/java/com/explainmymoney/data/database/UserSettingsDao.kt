@@ -23,4 +23,10 @@ interface UserSettingsDao {
 
     @Query("UPDATE user_settings SET isLoggedIn = 0, displayName = NULL, email = NULL, profileImageUrl = NULL WHERE id = 1")
     suspend fun logout()
+
+    @Query("UPDATE user_settings SET slmEnabled = :enabled WHERE id = 1")
+    suspend fun updateSlmEnabled(enabled: Boolean)
+
+    @Query("UPDATE user_settings SET slmModelDownloaded = :downloaded, slmModelPath = :modelPath WHERE id = 1")
+    suspend fun updateSlmModelStatus(downloaded: Boolean, modelPath: String?)
 }

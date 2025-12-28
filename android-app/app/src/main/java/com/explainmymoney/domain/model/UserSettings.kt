@@ -14,8 +14,19 @@ data class UserSettings(
     val countryCode: String = "IN",
     val countryName: String = "India",
     val currencyCode: String = "INR",
-    val currencySymbol: String = "₹"
+    val currencySymbol: String = "₹",
+    val slmEnabled: Boolean = false,
+    val slmModelDownloaded: Boolean = false,
+    val slmModelPath: String? = null
 )
+
+enum class SlmStatus {
+    NOT_AVAILABLE,
+    AVAILABLE_NOT_DOWNLOADED,
+    DOWNLOADING,
+    READY,
+    ERROR
+}
 
 data class Country(
     val code: String,
