@@ -96,3 +96,41 @@ Automatic categorization based on transaction descriptions with merchant extract
 - Vite dev server with HMR
 - Custom Replit plugins (cartographer, dev-banner, runtime-error-modal)
 - TypeScript with strict mode
+
+## Android App (android-app/)
+
+The Android native app mirrors the web app functionality with native performance.
+
+### Architecture
+- **Language**: Kotlin with Jetpack Compose
+- **Architecture Pattern**: MVVM with ViewModel
+- **Database**: Room for local storage
+- **Navigation**: Jetpack Navigation Compose
+
+### Key Features
+- SMS transaction scanning with permission handling
+- Gmail API integration for reading transaction emails (OAuth 2.0)
+- Bank statement parsing (PDF, CSV, Excel)
+- Small Language Model (SLM) for on-device AI conversations
+- Country/currency preferences with auto-detection
+
+### Gmail Integration
+- **Authentication**: Google Sign-In with Gmail read-only scope
+- **Query Filters**: Searches for bank keywords and common bank sender addresses
+- **Email Parsing**: Regex-based extraction of amounts, merchants, and transaction types
+- **Privacy**: Read-only access, all processing done locally on device
+- **Classes**:
+  - `GmailReader`: Handles OAuth and Gmail API communication
+  - `EmailParser`: Extracts transaction data from email content
+
+### Key Files
+- `app/src/main/java/com/explainmymoney/ui/viewmodel/MainViewModel.kt` - Central ViewModel
+- `app/src/main/java/com/explainmymoney/data/gmail/GmailReader.kt` - Gmail OAuth and API
+- `app/src/main/java/com/explainmymoney/data/parser/` - SMS, Email, Statement parsers
+- `app/src/main/java/com/explainmymoney/ui/screens/` - Compose UI screens
+
+### Building
+Download `android-app.zip`, extract, and open in Android Studio. Requires:
+- Android Studio Hedgehog or newer
+- JDK 17+
+- Android SDK 34
