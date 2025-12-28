@@ -17,45 +17,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.explainmymoney.data.repository.TransactionRepository
 import com.explainmymoney.domain.model.Transaction
 import com.explainmymoney.domain.model.TransactionCategory
 import com.explainmymoney.domain.model.TransactionType
-import com.explainmymoney.ui.theme.*
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalyticsScreen(
-    repository: TransactionRepository,
+    transactions: List<Transaction>,
+    totalSpent: Double,
+    totalIncome: Double,
+    categoryBreakdown: Map<TransactionCategory, Double>,
+    currencySymbol: String,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val scope = rememberCoroutineScope()
-    val transactions by repository.getTransactionsThisMonth().collectAsState(initial = emptyList())
-    
-    var totalSpent by remember { mutableStateOf(0.0) }
-    var totalIncome by remember { mutableStateOf(0.0) }
-    var categoryBreakdown by remember { mutableStateOf<Map<TransactionCategory, Double>>(emptyMap()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(Unit) {
-        scope.launch {
-            try {
-                totalSpent = repository.getTotalSpentThisMonth()
-                totalIncome = repository.getTotalIncomeThisMonth()
-                categoryBreakdown = repository.getCategoryBreakdown()
-                error = null
-            } catch (e: Exception) {
-                error = "Failed to load analytics: ${e.message}"
-            } finally {
-                isLoading = false
-            }
-        }
-    }
-
     val dailyAverage = if (Calendar.getInstance().get(Calendar.DAY_OF_MONTH) > 0) {
         totalSpent / Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
     } else 0.0
@@ -63,6 +41,10 @@ fun AnalyticsScreen(
     val daysRemaining = Calendar.getInstance().getActualMaximum(Calendar.DAY_OF_MONTH) - 
                        Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
     val projectedMonthlySpend = totalSpent + (dailyAverage * daysRemaining)
+
+    LaunchedEffect(Unit) {
+        onRefresh()
+    }
 
     Scaffold(
         topBar = {
@@ -79,6 +61,11 @@ fun AnalyticsScreen(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onRefresh) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -103,15 +90,17 @@ fun AnalyticsScreen(
                     SummaryCard(
                         title = "Total Spent",
                         amount = totalSpent,
+                        currencySymbol = currencySymbol,
                         icon = Icons.Default.ArrowUpward,
-                        iconColor = Error,
+                        iconColor = MaterialTheme.colorScheme.error,
                         modifier = Modifier.weight(1f)
                     )
                     SummaryCard(
                         title = "Total Income",
                         amount = totalIncome,
+                        currencySymbol = currencySymbol,
                         icon = Icons.Default.ArrowDownward,
-                        iconColor = Success,
+                        iconColor = Color(0xFF4CAF50),
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -148,7 +137,7 @@ fun AnalyticsScreen(
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                                 Text(
-                                    text = "₹${formatAmount(projectedMonthlySpend)}",
+                                    text = "$currencySymbol${formatAmount(projectedMonthlySpend)}",
                                     style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -162,7 +151,7 @@ fun AnalyticsScreen(
                                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                                 )
                                 Text(
-                                    text = "₹${formatAmount(dailyAverage)}",
+                                    text = "$currencySymbol${formatAmount(dailyAverage)}",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -215,7 +204,8 @@ fun AnalyticsScreen(
                     CategoryRow(
                         category = category,
                         amount = amount,
-                        total = totalSpent
+                        total = totalSpent,
+                        currencySymbol = currencySymbol
                     )
                 }
             }
@@ -231,7 +221,7 @@ fun AnalyticsScreen(
             }
 
             items(transactions.take(5)) { transaction ->
-                MiniTransactionRow(transaction = transaction)
+                MiniTransactionRow(transaction = transaction, currencySymbol = currencySymbol)
             }
         }
     }
@@ -241,6 +231,7 @@ fun AnalyticsScreen(
 private fun SummaryCard(
     title: String,
     amount: Double,
+    currencySymbol: String,
     icon: ImageVector,
     iconColor: Color,
     modifier: Modifier = Modifier
@@ -270,7 +261,7 @@ private fun SummaryCard(
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "₹${formatAmount(amount)}",
+                text = "$currencySymbol${formatAmount(amount)}",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -284,6 +275,7 @@ private fun CategoryRow(
     category: TransactionCategory,
     amount: Double,
     total: Double,
+    currencySymbol: String,
     modifier: Modifier = Modifier
 ) {
     val percentage = if (total > 0) (amount / total * 100).toInt() else 0
@@ -325,7 +317,7 @@ private fun CategoryRow(
                 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "₹${formatAmount(amount)}",
+                        text = "$currencySymbol${formatAmount(amount)}",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -355,6 +347,7 @@ private fun CategoryRow(
 @Composable
 private fun MiniTransactionRow(
     transaction: Transaction,
+    currencySymbol: String,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -381,11 +374,11 @@ private fun MiniTransactionRow(
                 )
             }
             
-            val amountColor = if (transaction.type == TransactionType.CREDIT) Success else MaterialTheme.colorScheme.onSurface
+            val amountColor = if (transaction.type == TransactionType.CREDIT) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurface
             val prefix = if (transaction.type == TransactionType.CREDIT) "+" else "-"
             
             Text(
-                text = "$prefix₹${formatAmount(transaction.amount)}",
+                text = "$prefix$currencySymbol${formatAmount(transaction.amount)}",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = amountColor

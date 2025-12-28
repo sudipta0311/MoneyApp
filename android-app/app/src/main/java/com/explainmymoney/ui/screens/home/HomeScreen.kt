@@ -1,10 +1,8 @@
 package com.explainmymoney.ui.screens.home
 
 import android.Manifest
-import android.content.ContentResolver
-import android.database.Cursor
+import android.content.Context
 import android.net.Uri
-import android.provider.Telephony
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -19,123 +17,32 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.explainmymoney.data.parser.SmsParser
-import com.explainmymoney.data.parser.StatementParser
-import com.explainmymoney.data.repository.TransactionRepository
 import com.explainmymoney.domain.model.Transaction
 import com.explainmymoney.ui.components.TransactionCard
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun HomeScreen(
-    repository: TransactionRepository,
+    transactions: List<Transaction>,
+    isLoading: Boolean,
+    scanResult: String?,
+    currencySymbol: String,
+    onScanSms: (Context, Boolean) -> Unit,
+    onImportFile: (Uri) -> Unit,
+    onDeleteTransaction: (Long) -> Unit,
+    onClearScanResult: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val transactions by repository.getAllTransactions().collectAsState(initial = emptyList())
-    
-    var isScanning by remember { mutableStateOf(false) }
-    var scanResult by remember { mutableStateOf<String?>(null) }
-
     val smsPermissionState = rememberPermissionState(Manifest.permission.READ_SMS)
-    val smsParser = remember { SmsParser() }
-    val statementParser = remember { StatementParser(context) }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let {
-            scope.launch {
-                isScanning = true
-                try {
-                    val parsed = withContext(Dispatchers.IO) {
-                        statementParser.parseFile(it)
-                    }
-                    if (parsed.isNotEmpty()) {
-                        repository.insertTransactions(parsed)
-                        scanResult = "Imported ${parsed.size} transactions from statement"
-                    } else {
-                        scanResult = "No transactions found in file"
-                    }
-                } catch (e: Exception) {
-                    scanResult = "Error parsing file: ${e.message}"
-                }
-                isScanning = false
-            }
-        }
-    }
-
-    fun scanSmsMessages() {
-        if (!smsPermissionState.status.isGranted) {
-            smsPermissionState.launchPermissionRequest()
-            return
-        }
-
-        scope.launch {
-            isScanning = true
-            try {
-                val parsedTransactions = withContext(Dispatchers.IO) {
-                    val smsUri = Telephony.Sms.CONTENT_URI
-                    val projection = arrayOf(
-                        Telephony.Sms._ID,
-                        Telephony.Sms.ADDRESS,
-                        Telephony.Sms.BODY,
-                        Telephony.Sms.DATE
-                    )
-
-                    val cursor: Cursor? = try {
-                        context.contentResolver.query(
-                            smsUri,
-                            projection,
-                            null,
-                            null,
-                            "${Telephony.Sms.DATE} DESC LIMIT 500"
-                        )
-                    } catch (e: SecurityException) {
-                        null
-                    }
-
-                    val transactions = mutableListOf<Transaction>()
-                    cursor?.use {
-                        val addressIndex = it.getColumnIndex(Telephony.Sms.ADDRESS)
-                        val bodyIndex = it.getColumnIndex(Telephony.Sms.BODY)
-                        val dateIndex = it.getColumnIndex(Telephony.Sms.DATE)
-
-                        if (addressIndex < 0 || bodyIndex < 0 || dateIndex < 0) {
-                            return@use
-                        }
-
-                        while (it.moveToNext()) {
-                            val address = it.getString(addressIndex) ?: continue
-                            val body = it.getString(bodyIndex) ?: continue
-                            val date = it.getLong(dateIndex)
-
-                            smsParser.parseTransactionSms(address, body, date)?.let { tx ->
-                                transactions.add(tx)
-                            }
-                        }
-                    }
-                    transactions
-                }
-
-                if (parsedTransactions.isNotEmpty()) {
-                    repository.insertTransactions(parsedTransactions)
-                    scanResult = "Found ${parsedTransactions.size} transaction SMS messages"
-                } else {
-                    scanResult = "No transaction messages found. Make sure you have bank SMS messages."
-                }
-            } catch (e: Exception) {
-                scanResult = "Error scanning SMS: ${e.message ?: "Unknown error"}"
-            }
-            isScanning = false
-        }
+        uri?.let { onImportFile(it) }
     }
 
     Scaffold(
@@ -156,7 +63,7 @@ fun HomeScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Notifications */ }) {
+                    IconButton(onClick = { }) {
                         Icon(Icons.Default.Notifications, contentDescription = "Notifications")
                     }
                 },
@@ -179,11 +86,17 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
-                    onClick = { scanSmsMessages() },
-                    enabled = !isScanning,
+                    onClick = { 
+                        if (!smsPermissionState.status.isGranted) {
+                            smsPermissionState.launchPermissionRequest()
+                        } else {
+                            onScanSms(context, true)
+                        }
+                    },
+                    enabled = !isLoading,
                     modifier = Modifier.weight(1f)
                 ) {
-                    if (isScanning) {
+                    if (isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp,
@@ -198,7 +111,7 @@ fun HomeScreen(
 
                 OutlinedButton(
                     onClick = { filePickerLauncher.launch("*/*") },
-                    enabled = !isScanning,
+                    enabled = !isLoading,
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -226,10 +139,11 @@ fun HomeScreen(
                         Text(
                             text = result,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.weight(1f)
                         )
                         IconButton(
-                            onClick = { scanResult = null },
+                            onClick = onClearScanResult,
                             modifier = Modifier.size(24.dp)
                         ) {
                             Icon(
@@ -299,11 +213,8 @@ fun HomeScreen(
                     items(transactions, key = { it.id }) { transaction ->
                         TransactionCard(
                             transaction = transaction,
-                            onDelete = {
-                                scope.launch {
-                                    repository.deleteTransaction(transaction.id)
-                                }
-                            }
+                            currencySymbol = currencySymbol,
+                            onDelete = { onDeleteTransaction(transaction.id) }
                         )
                     }
                 }

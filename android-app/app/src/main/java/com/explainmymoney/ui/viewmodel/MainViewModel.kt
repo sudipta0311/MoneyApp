@@ -1,0 +1,219 @@
+package com.explainmymoney.ui.viewmodel
+
+import android.app.Application
+import android.content.Context
+import android.database.Cursor
+import android.net.Uri
+import android.provider.Telephony
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.explainmymoney.data.database.AppDatabase
+import com.explainmymoney.data.parser.SmsParser
+import com.explainmymoney.data.parser.StatementParser
+import com.explainmymoney.data.repository.TransactionRepository
+import com.explainmymoney.domain.model.Country
+import com.explainmymoney.domain.model.Transaction
+import com.explainmymoney.domain.model.TransactionCategory
+import com.explainmymoney.domain.model.UserSettings
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+class MainViewModel(application: Application) : AndroidViewModel(application) {
+    private val database = AppDatabase.getDatabase(application)
+    private val transactionDao = database.transactionDao()
+    private val userSettingsDao = database.userSettingsDao()
+    
+    val repository = TransactionRepository(transactionDao)
+    private val smsParser = SmsParser()
+    private val statementParser = StatementParser(application)
+    
+    val transactions: StateFlow<List<Transaction>> = repository.getAllTransactions()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    
+    val investmentTransactions: StateFlow<List<Transaction>> = repository.getInvestmentTransactions()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    
+    private val _userSettings = MutableStateFlow<UserSettings?>(null)
+    val userSettings: StateFlow<UserSettings?> = _userSettings.asStateFlow()
+    
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    
+    private val _scanResult = MutableStateFlow<String?>(null)
+    val scanResult: StateFlow<String?> = _scanResult.asStateFlow()
+    
+    private val _totalSpentThisMonth = MutableStateFlow(0.0)
+    val totalSpentThisMonth: StateFlow<Double> = _totalSpentThisMonth.asStateFlow()
+    
+    private val _totalIncomeThisMonth = MutableStateFlow(0.0)
+    val totalIncomeThisMonth: StateFlow<Double> = _totalIncomeThisMonth.asStateFlow()
+    
+    private val _categoryBreakdown = MutableStateFlow<Map<TransactionCategory, Double>>(emptyMap())
+    val categoryBreakdown: StateFlow<Map<TransactionCategory, Double>> = _categoryBreakdown.asStateFlow()
+    
+    init {
+        loadUserSettings()
+        loadAnalytics()
+    }
+    
+    private fun loadUserSettings() {
+        viewModelScope.launch {
+            userSettingsDao.getSettings().collect { settings ->
+                if (settings == null) {
+                    val defaultSettings = UserSettings()
+                    userSettingsDao.saveSettings(defaultSettings)
+                    _userSettings.value = defaultSettings
+                } else {
+                    _userSettings.value = settings
+                }
+            }
+        }
+    }
+    
+    fun loadAnalytics() {
+        viewModelScope.launch {
+            _totalSpentThisMonth.value = repository.getTotalSpentThisMonth()
+            _totalIncomeThisMonth.value = repository.getTotalIncomeThisMonth()
+            _categoryBreakdown.value = repository.getCategoryBreakdown()
+        }
+    }
+    
+    fun updateCountry(country: Country) {
+        viewModelScope.launch {
+            userSettingsDao.updateCountryCurrency(
+                country.code,
+                country.name,
+                country.currencyCode,
+                country.currencySymbol
+            )
+        }
+    }
+    
+    fun login(displayName: String, email: String, profileImageUrl: String?) {
+        viewModelScope.launch {
+            userSettingsDao.updateLoginStatus(true, displayName, email, profileImageUrl)
+        }
+    }
+    
+    fun logout() {
+        viewModelScope.launch {
+            userSettingsDao.logout()
+        }
+    }
+    
+    fun insertTransactions(transactions: List<Transaction>) {
+        viewModelScope.launch {
+            repository.insertTransactions(transactions)
+            loadAnalytics()
+        }
+    }
+    
+    fun deleteTransaction(id: Long) {
+        viewModelScope.launch {
+            repository.deleteTransaction(id)
+            loadAnalytics()
+        }
+    }
+    
+    fun clearScanResult() {
+        _scanResult.value = null
+    }
+    
+    fun scanSmsMessages(context: Context, hasPermission: Boolean) {
+        if (!hasPermission) {
+            _scanResult.value = "SMS permission required"
+            return
+        }
+        
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val parsedTransactions = withContext(Dispatchers.IO) {
+                    val smsUri = Telephony.Sms.CONTENT_URI
+                    val projection = arrayOf(
+                        Telephony.Sms._ID,
+                        Telephony.Sms.ADDRESS,
+                        Telephony.Sms.BODY,
+                        Telephony.Sms.DATE
+                    )
+
+                    val cursor: Cursor? = try {
+                        context.contentResolver.query(
+                            smsUri,
+                            projection,
+                            null,
+                            null,
+                            "${Telephony.Sms.DATE} DESC LIMIT 500"
+                        )
+                    } catch (e: SecurityException) {
+                        null
+                    }
+
+                    val transactions = mutableListOf<Transaction>()
+                    cursor?.use {
+                        val addressIndex = it.getColumnIndex(Telephony.Sms.ADDRESS)
+                        val bodyIndex = it.getColumnIndex(Telephony.Sms.BODY)
+                        val dateIndex = it.getColumnIndex(Telephony.Sms.DATE)
+
+                        if (addressIndex < 0 || bodyIndex < 0 || dateIndex < 0) {
+                            return@use
+                        }
+
+                        while (it.moveToNext()) {
+                            val address = it.getString(addressIndex) ?: continue
+                            val body = it.getString(bodyIndex) ?: continue
+                            val date = it.getLong(dateIndex)
+
+                            smsParser.parseTransactionSms(address, body, date)?.let { tx ->
+                                transactions.add(tx)
+                            }
+                        }
+                    }
+                    transactions
+                }
+
+                if (parsedTransactions.isNotEmpty()) {
+                    repository.insertTransactions(parsedTransactions)
+                    loadAnalytics()
+                    _scanResult.value = "Found ${parsedTransactions.size} transaction SMS messages"
+                } else {
+                    _scanResult.value = "No transaction messages found"
+                }
+            } catch (e: Exception) {
+                _scanResult.value = "Error scanning SMS: ${e.message ?: "Unknown error"}"
+            }
+            _isLoading.value = false
+        }
+    }
+    
+    fun parseStatementFile(uri: Uri) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val parsed = withContext(Dispatchers.IO) {
+                    statementParser.parseFile(uri)
+                }
+                if (parsed.isNotEmpty()) {
+                    repository.insertTransactions(parsed)
+                    loadAnalytics()
+                    _scanResult.value = "Imported ${parsed.size} transactions from statement"
+                } else {
+                    _scanResult.value = "No transactions found in file"
+                }
+            } catch (e: Exception) {
+                _scanResult.value = "Error parsing file: ${e.message}"
+            }
+            _isLoading.value = false
+        }
+    }
+    
+    fun getCurrencySymbol(): String {
+        return _userSettings.value?.currencySymbol ?: "₹"
+    }
+}

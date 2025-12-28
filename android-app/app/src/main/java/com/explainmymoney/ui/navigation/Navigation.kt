@@ -13,13 +13,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.explainmymoney.data.database.AppDatabase
-import com.explainmymoney.data.repository.TransactionRepository
 import com.explainmymoney.ui.screens.analytics.AnalyticsScreen
 import com.explainmymoney.ui.screens.chat.ChatScreen
 import com.explainmymoney.ui.screens.home.HomeScreen
 import com.explainmymoney.ui.screens.investments.InvestmentsScreen
 import com.explainmymoney.ui.screens.permissions.PermissionsScreen
+import com.explainmymoney.ui.viewmodel.MainViewModel
 
 sealed class Screen(
     val route: String,
@@ -31,7 +30,7 @@ sealed class Screen(
     object Analytics : Screen("analytics", "Analytics", Icons.Filled.BarChart, Icons.Outlined.BarChart)
     object Investments : Screen("investments", "Invest", Icons.Filled.TrendingUp, Icons.Outlined.TrendingUp)
     object Chat : Screen("chat", "Chat", Icons.Filled.Chat, Icons.Outlined.Chat)
-    object Permissions : Screen("permissions", "Settings", Icons.Filled.Settings, Icons.Outlined.Settings)
+    object Settings : Screen("settings", "Settings", Icons.Filled.Settings, Icons.Outlined.Settings)
 }
 
 val bottomNavItems = listOf(
@@ -39,16 +38,24 @@ val bottomNavItems = listOf(
     Screen.Analytics,
     Screen.Investments,
     Screen.Chat,
-    Screen.Permissions
+    Screen.Settings
 )
 
 @Composable
 fun MainNavigation(
-    database: AppDatabase,
+    viewModel: MainViewModel,
     modifier: Modifier = Modifier
 ) {
     val navController = rememberNavController()
-    val repository = remember { TransactionRepository(database.transactionDao()) }
+    
+    val transactions by viewModel.transactions.collectAsState()
+    val investmentTransactions by viewModel.investmentTransactions.collectAsState()
+    val userSettings by viewModel.userSettings.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val scanResult by viewModel.scanResult.collectAsState()
+    val totalSpent by viewModel.totalSpentThisMonth.collectAsState()
+    val totalIncome by viewModel.totalIncomeThisMonth.collectAsState()
+    val categoryBreakdown by viewModel.categoryBreakdown.collectAsState()
 
     Scaffold(
         bottomBar = {
@@ -62,19 +69,50 @@ fun MainNavigation(
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Home.route) {
-                HomeScreen(repository = repository)
+                HomeScreen(
+                    transactions = transactions,
+                    isLoading = isLoading,
+                    scanResult = scanResult,
+                    currencySymbol = viewModel.getCurrencySymbol(),
+                    onScanSms = { context, hasPermission -> 
+                        viewModel.scanSmsMessages(context, hasPermission) 
+                    },
+                    onImportFile = { uri -> viewModel.parseStatementFile(uri) },
+                    onDeleteTransaction = { id -> viewModel.deleteTransaction(id) },
+                    onClearScanResult = { viewModel.clearScanResult() }
+                )
             }
             composable(Screen.Analytics.route) {
-                AnalyticsScreen(repository = repository)
+                AnalyticsScreen(
+                    transactions = transactions,
+                    totalSpent = totalSpent,
+                    totalIncome = totalIncome,
+                    categoryBreakdown = categoryBreakdown,
+                    currencySymbol = viewModel.getCurrencySymbol(),
+                    onRefresh = { viewModel.loadAnalytics() }
+                )
             }
             composable(Screen.Investments.route) {
-                InvestmentsScreen(repository = repository)
+                InvestmentsScreen(
+                    investmentTransactions = investmentTransactions,
+                    currencySymbol = viewModel.getCurrencySymbol()
+                )
             }
             composable(Screen.Chat.route) {
-                ChatScreen(repository = repository)
+                ChatScreen(
+                    transactions = transactions,
+                    currencySymbol = viewModel.getCurrencySymbol()
+                )
             }
-            composable(Screen.Permissions.route) {
-                PermissionsScreen()
+            composable(Screen.Settings.route) {
+                PermissionsScreen(
+                    userSettings = userSettings,
+                    onLogin = { 
+                        viewModel.login("Demo User", "demo@example.com", null) 
+                    },
+                    onLogout = { viewModel.logout() },
+                    onCountryChange = { country -> viewModel.updateCountry(country) }
+                )
             }
         }
     }

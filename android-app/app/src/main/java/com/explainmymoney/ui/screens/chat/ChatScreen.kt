@@ -14,10 +14,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.explainmymoney.data.repository.TransactionRepository
 import com.explainmymoney.domain.model.Transaction
 import com.explainmymoney.domain.model.TransactionCategory
 import com.explainmymoney.domain.model.TransactionType
@@ -34,11 +32,11 @@ data class ChatMessage(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    repository: TransactionRepository,
+    transactions: List<Transaction>,
+    currencySymbol: String,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
-    val transactions by repository.getAllTransactions().collectAsState(initial = emptyList())
     val listState = rememberLazyListState()
 
     var inputText by remember { mutableStateOf("") }
@@ -57,11 +55,8 @@ fun ChatScreen(
     fun processQuery(query: String) {
         scope.launch {
             isTyping = true
-
             kotlinx.coroutines.delay(500)
-
-            val response = generateLocalResponse(query, transactions)
-
+            val response = generateLocalResponse(query, transactions, currencySymbol)
             messages = messages + ChatMessage(
                 content = response,
                 isUser = false
@@ -73,7 +68,6 @@ fun ChatScreen(
     fun sendMessage() {
         val text = inputText.trim()
         if (text.isEmpty()) return
-
         messages = messages + ChatMessage(content = text, isUser = true)
         inputText = ""
         processQuery(text)
@@ -301,7 +295,7 @@ private fun TypingIndicator() {
     }
 }
 
-private fun generateLocalResponse(query: String, transactions: List<Transaction>): String {
+private fun generateLocalResponse(query: String, transactions: List<Transaction>, currencySymbol: String): String {
     val lowerQuery = query.lowercase()
 
     if (transactions.isEmpty()) {
@@ -315,15 +309,15 @@ private fun generateLocalResponse(query: String, transactions: List<Transaction>
             if (foodTxs.isEmpty()) {
                 "I don't see any food-related transactions in your history."
             } else {
-                "You've spent ₹${formatAmount(total)} on food across ${foodTxs.size} transactions. " +
-                "That's an average of ₹${formatAmount(total / foodTxs.size)} per transaction."
+                "You've spent $currencySymbol${formatAmount(total)} on food across ${foodTxs.size} transactions. " +
+                "That's an average of $currencySymbol${formatAmount(total / foodTxs.size)} per transaction."
             }
         }
 
         lowerQuery.contains("biggest") || lowerQuery.contains("largest") || lowerQuery.contains("highest") -> {
             val biggest = transactions.filter { it.type == TransactionType.DEBIT }.maxByOrNull { it.amount }
             biggest?.let {
-                "Your biggest expense was ₹${formatAmount(it.amount)} to ${it.merchant ?: "a merchant"} " +
+                "Your biggest expense was $currencySymbol${formatAmount(it.amount)} to ${it.merchant ?: "a merchant"} " +
                 "in the ${formatCategory(it.category)} category."
             } ?: "I couldn't find any expenses to analyze."
         }
@@ -334,14 +328,14 @@ private fun generateLocalResponse(query: String, transactions: List<Transaction>
             if (investments.isEmpty()) {
                 "I don't see any investment transactions yet."
             } else {
-                "You've invested ₹${formatAmount(total)} across ${investments.size} transactions. Keep building your wealth!"
+                "You've invested $currencySymbol${formatAmount(total)} across ${investments.size} transactions. Keep building your wealth!"
             }
         }
 
         lowerQuery.contains("total") || lowerQuery.contains("spent") || lowerQuery.contains("spending") -> {
             val debits = transactions.filter { it.type == TransactionType.DEBIT }
             val total = debits.sumOf { it.amount }
-            "Your total spending is ₹${formatAmount(total)} across ${debits.size} transactions."
+            "Your total spending is $currencySymbol${formatAmount(total)} across ${debits.size} transactions."
         }
 
         lowerQuery.contains("income") || lowerQuery.contains("received") || lowerQuery.contains("earned") -> {
@@ -350,7 +344,7 @@ private fun generateLocalResponse(query: String, transactions: List<Transaction>
             if (credits.isEmpty()) {
                 "I don't see any income transactions recorded."
             } else {
-                "You've received ₹${formatAmount(total)} in income from ${credits.size} transactions."
+                "You've received $currencySymbol${formatAmount(total)} in income from ${credits.size} transactions."
             }
         }
 
@@ -379,7 +373,7 @@ private fun generateLocalResponse(query: String, transactions: List<Transaction>
                 "No spending categories to show yet."
             } else {
                 val breakdown = byCategory.mapIndexed { i, (cat, amount) ->
-                    "${i + 1}. ${formatCategory(cat)}: ₹${formatAmount(amount)}"
+                    "${i + 1}. ${formatCategory(cat)}: $currencySymbol${formatAmount(amount)}"
                 }.joinToString("\n")
                 "Your top spending categories:\n\n$breakdown"
             }
@@ -391,7 +385,7 @@ private fun generateLocalResponse(query: String, transactions: List<Transaction>
             if (shopping.isEmpty()) {
                 "I don't see any shopping transactions."
             } else {
-                "You've spent ₹${formatAmount(total)} on shopping across ${shopping.size} purchases."
+                "You've spent $currencySymbol${formatAmount(total)} on shopping across ${shopping.size} purchases."
             }
         }
 
@@ -401,7 +395,7 @@ private fun generateLocalResponse(query: String, transactions: List<Transaction>
             if (entertainment.isEmpty()) {
                 "No entertainment expenses found."
             } else {
-                "You've spent ₹${formatAmount(total)} on entertainment."
+                "You've spent $currencySymbol${formatAmount(total)} on entertainment."
             }
         }
 
@@ -417,7 +411,7 @@ private fun generateLocalResponse(query: String, transactions: List<Transaction>
         else -> {
             val total = transactions.sumOf { it.amount }
             val count = transactions.size
-            "You have $count transactions totaling ₹${formatAmount(total)}. " +
+            "You have $count transactions totaling $currencySymbol${formatAmount(total)}. " +
             "Try asking about specific categories like food, shopping, or investments!"
         }
     }

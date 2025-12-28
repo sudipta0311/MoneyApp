@@ -1,6 +1,7 @@
 package com.explainmymoney.ui.screens.permissions
 
 import android.Manifest
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,7 +20,6 @@ import com.explainmymoney.domain.model.UserSettings
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
@@ -158,9 +158,10 @@ fun PermissionsScreen(
 
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    onClick = { showCountryPicker = true }
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showCountryPicker = true },
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Row(
                         modifier = Modifier
@@ -410,10 +411,4 @@ private fun PermissionCard(
             }
         }
     }
-}
-
-private fun androidx.compose.ui.Modifier.clickable(onClick: () -> Unit): androidx.compose.ui.Modifier {
-    return this.then(
-        androidx.compose.foundation.clickable { onClick() }
-    )
 }

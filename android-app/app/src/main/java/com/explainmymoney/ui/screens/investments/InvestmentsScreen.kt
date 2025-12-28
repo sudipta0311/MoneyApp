@@ -17,24 +17,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.explainmymoney.data.repository.TransactionRepository
 import com.explainmymoney.domain.model.InvestmentType
 import com.explainmymoney.domain.model.Transaction
-import com.explainmymoney.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvestmentsScreen(
-    repository: TransactionRepository,
+    investmentTransactions: List<Transaction>,
+    currencySymbol: String,
     modifier: Modifier = Modifier
 ) {
-    val investments by repository.getInvestmentTransactions().collectAsState(initial = emptyList())
-
-    val totalInvested = investments.sumOf { it.amount }
+    val totalInvested = investmentTransactions.sumOf { it.amount }
     
-    val investmentsByType = investments.groupBy { it.investmentType ?: InvestmentType.OTHER }
+    val investmentsByType = investmentTransactions.groupBy { it.investmentType ?: InvestmentType.OTHER }
         .mapValues { (_, txs) -> txs.sumOf { it.amount } }
 
     Scaffold(
@@ -86,14 +83,14 @@ fun InvestmentsScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "₹${formatAmount(totalInvested)}",
+                            text = "$currencySymbol${formatAmount(totalInvested)}",
                             style = MaterialTheme.typography.displaySmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "${investments.size} investment transactions tracked",
+                            text = "${investmentTransactions.size} investment transactions tracked",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
                         )
@@ -148,12 +145,13 @@ fun InvestmentsScreen(
                         type = type,
                         amount = amount,
                         total = totalInvested,
-                        count = investments.count { it.investmentType == type }
+                        count = investmentTransactions.count { it.investmentType == type },
+                        currencySymbol = currencySymbol
                     )
                 }
             }
 
-            if (investments.isNotEmpty()) {
+            if (investmentTransactions.isNotEmpty()) {
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
@@ -164,8 +162,8 @@ fun InvestmentsScreen(
                     )
                 }
 
-                items(investments.take(10)) { investment ->
-                    InvestmentRow(investment = investment)
+                items(investmentTransactions.take(10)) { investment ->
+                    InvestmentRow(investment = investment, currencySymbol = currencySymbol)
                 }
             }
         }
@@ -178,6 +176,7 @@ private fun InvestmentTypeCard(
     amount: Double,
     total: Double,
     count: Int,
+    currencySymbol: String,
     modifier: Modifier = Modifier
 ) {
     val percentage = if (total > 0) (amount / total * 100).toInt() else 0
@@ -224,7 +223,7 @@ private fun InvestmentTypeCard(
             
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "₹${formatAmount(amount)}",
+                    text = "$currencySymbol${formatAmount(amount)}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -242,6 +241,7 @@ private fun InvestmentTypeCard(
 @Composable
 private fun InvestmentRow(
     investment: Transaction,
+    currencySymbol: String,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -269,7 +269,7 @@ private fun InvestmentRow(
             }
             
             Text(
-                text = "₹${formatAmount(investment.amount)}",
+                text = "$currencySymbol${formatAmount(investment.amount)}",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary

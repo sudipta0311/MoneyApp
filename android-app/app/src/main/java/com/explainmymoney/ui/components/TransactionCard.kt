@@ -18,13 +18,13 @@ import androidx.compose.ui.unit.dp
 import com.explainmymoney.domain.model.Transaction
 import com.explainmymoney.domain.model.TransactionCategory
 import com.explainmymoney.domain.model.TransactionType
-import com.explainmymoney.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
 fun TransactionCard(
     transaction: Transaction,
+    currencySymbol: String = "₹",
     onDelete: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -88,11 +88,11 @@ fun TransactionCard(
 
                 Column(horizontalAlignment = Alignment.End) {
                     val amountColor = if (transaction.type == TransactionType.CREDIT) 
-                        Success else MaterialTheme.colorScheme.onSurface
+                        Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurface
                     val amountPrefix = if (transaction.type == TransactionType.CREDIT) "+" else "-"
 
                     Text(
-                        text = "$amountPrefix${transaction.currency}${formatAmount(transaction.amount)}",
+                        text = "$amountPrefix$currencySymbol${formatAmount(transaction.amount)}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = amountColor
@@ -118,7 +118,7 @@ fun TransactionCard(
                     transaction.merchant?.let { DetailRow(label = "Merchant", value = it) }
                     transaction.referenceNo?.let { DetailRow(label = "Reference", value = it) }
                     transaction.balance?.let { 
-                        DetailRow(label = "Balance After", value = "${transaction.currency}${formatAmount(it)}") 
+                        DetailRow(label = "Balance After", value = "$currencySymbol${formatAmount(it)}") 
                     }
                     DetailRow(label = "Source", value = transaction.source.name)
                     
@@ -146,7 +146,7 @@ fun TransactionCard(
                         Spacer(modifier = Modifier.height(4.dp))
                         TextButton(
                             onClick = it,
-                            colors = ButtonDefaults.textButtonColors(contentColor = Error)
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                         ) {
                             Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
